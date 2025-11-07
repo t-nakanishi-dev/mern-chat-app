@@ -1,0 +1,10 @@
+/* src/index.css */
+
+/* Tailwindの基本スタイル */
+@tailwind base;
+
+/* Tailwindのコンポーネント関連スタイル（Tailwindが提供するボタンなど） */
+@tailwind components;
+
+/* Tailwindのユーティリティクラス（bg-blue-500, p-4など） */
+@tailwind utilities;
