@@ -1,0 +1,157 @@
+[33mcommit 05868f205c037ed9fdd49a5ad6fbeb63a1fb7cbb[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    UI improvements: adjusted design and layout
+
+[33mcommit 68dcb4e95a9d2a930d4dc0049480747587214258[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Update README with directory structure, features, and notes
+
+[33mcommit 79a731fda593993481ee0b5e7e1d9880ce5fb141[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Update README with formatted directory structure
+
+[33mcommit 373670415c29c523dfacef05c3bc466fa20a04b1[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Update README with features, env, and usage
+
+[33mcommit 23ad904c689eaf1d5a18891528e8e13e6e2bc339[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Implement mute feature in group chat and message input
+
+[33mcommit 6a2506f5bf9ac8cee21c357d1478c1451a48949a[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    feat: Implement real-time ban notifications
+    
+    This commit adds real-time ban and unban notifications to the group chat. It includes:\n- Backend: Emits 'member_banned' event via Socket.IO.\n- Frontend: Listens for the event and instantly hides the chat UI for banned members.
+
+[33mcommit c335ef394d9d61f430af8ed006460f2cc09a85c1[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Fix: Add admin check route in groupmembers.js and reorder routes
+
+[33mcommit 3c8225098c528fba54e8f8ea9cea5e488e3582ce[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    feat(admin): Implement group member management features including delete, ban, and mute functionality
+
+[33mcommit ff2bac53eb7928821f9c86c5d9e7d3b3df285b33[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Feat: Implement unread message notifications and optimistic UI for message sending
+
+[33mcommit 06c92d9cfb692e7ce782c957954e4fe6e6e6421d[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    feat: add user profile feature with bio and icon upload 🧑‍💻
+
+[33mcommit a3a5c0db110ff4571aeadec50dc8d01bb08b136b[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Fix: Block unsupported files and show modal ⚠️ / Added file type and size validation
+
+[33mcommit 7a12dd6037d4cffafa3df6d0994722cb83015539[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    fix: display server errors in modal and prevent crash on large file upload
+
+[33mcommit 47d1a29e32e083468e047bec8845be66c5a37c3e[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Fix: Frontend file size check and Multer error handling implemented 🚀
+
+[33mcommit a24fbc4beebeffeef64d1e6d9cdc9284d3e8aece[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    feat(chat): add search functionality and auto-scroll
+    
+    - Added a search bar to filter messages by keyword in the group chat
+    - Implemented smooth auto-scroll to the latest message when new messages are sent
+    - Updated UI to improve mobile responsiveness and message layout
+    - Ensures a better user experience on both desktop and mobile devices
+
+[33mcommit e3ceea0c9d63c18734090a78ce5e49e4a8c154ad[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    feat: Add Base64 handling for service account key
+
+[33mcommit 25888a8fabced35ea4c0a041b751b0fd72529965[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    feat: Implement GIF functionality and improve Firebase config
+    
+    This commit introduces a new GIF feature and refactors the Firebase service account key handling.
+    
+    - Added a new API endpoint () to handle GIF messages, separating it from standard file uploads.
+    - Modified the message schema to store GIF search queries in a dedicated  field for better data management.
+    - Updated the backend to load the Firebase service account key from an environment variable (), ensuring secure deployment on platforms like Render.
+    - Cleaned up the front-end logic to send GIFs without a displayable text message.
+
+[33mcommit 636008eb2a2cddb6e7246ca4b0bdc5198664c9b4[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Fix Firebase Storage bucket configuration and enable file upload in chat
+
+[33mcommit d26e18aa8f44edeac7e20e0cad4241e8c6db7909[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    feat: Add read status feature for messages
+
+[33mcommit 9a9956976a05be88c6baf9c66bca3617eaa845fa[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Implement group deletion feature: only group creator can delete (permission check + UI update)
+
+[33mcommit 13a4056629c57db1e7ed1b0b8637883a58803113[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Fix: Group chat messages duplication and socket event handling
+
+[33mcommit e86a1e23e426be7672f3117cdaee60482f1b6731[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Fix: Enable cross-origin resource sharing (CORS) for production environment
+
+[33mcommit 708984ec7ea57b41b2e7d19cb4d3b32321659720[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Fix chat message color and real-time display issues
+
+[33mcommit 34af162fccbcab3f69da1f46251cb358a85ce101[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Set up Socket.IO test page and environment variables for frontend
+
+[33mcommit 8df53e70479ecb53db18a79d4d15057b93e967c1[m
+Author: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+Commit: t-nakanishi-dev <t.nakanishi.dev@gmail.com>
+
+    Initial commit - frontend & backend
