@@ -13,7 +13,6 @@ export default function Layout() {
     try {
       await signOut(auth);
       navigate("/");
-      console.log("ログアウト成功");
     } catch (error) {
       console.error("ログアウトエラー:", error);
     }
@@ -30,101 +29,99 @@ export default function Layout() {
       case "/socket":
         return "ソケットテスト";
       default:
-        if (location.pathname.startsWith("/groups/")) {
-          return "チャット";
-        }
+        if (location.pathname.startsWith("/groups/")) return "チャット";
         return "Chat App";
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 relative">
+    <div className="flex h-screen bg-gray-100">
       {/* サイドバー */}
       <aside
-        className={`bg-white p-4 border-r border-gray-300 transition-all duration-300 transform ${
-          sidebarOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full"
-        } fixed sm:static h-full z-20 overflow-hidden shadow-md`}
+        className={`
+          bg-white border-r border-gray-300 shadow-md transition-all duration-300 ease-in-out
+          ${sidebarOpen ? "w-64 px-6 py-4" : "w-0"}
+          overflow-hidden flex-shrink-0
+        `}
       >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold whitespace-nowrap overflow-hidden">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-xl font-bold text-gray-800 whitespace-nowrap">
             Chat App
           </h2>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="p-1 rounded hover:bg-gray-200"
+            className="hidden sm:block p-2 rounded hover:bg-gray-200 text-gray-600"
           >
-            &gt;
+            ←
           </button>
         </div>
-        <nav className="space-y-2">
+
+        <nav className="space-y-1">
           <Link
             to="/groups"
-            className="block px-2 py-1 rounded hover:bg-gray-200 whitespace-nowrap"
+            className="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium"
           >
             Groups
           </Link>
           <Link
             to="/profile"
-            className="block px-2 py-1 rounded hover:bg-gray-200 whitespace-nowrap"
+            className="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium"
           >
             Profile
           </Link>
           <Link
             to="/admin"
-            className="block px-2 py-1 rounded hover:bg-gray-200 whitespace-nowrap"
+            className="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium"
           >
             Admin
           </Link>
           <button
             onClick={handleLogout}
-            className="w-full text-left px-2 py-1 rounded hover:bg-red-200 text-red-600 whitespace-nowrap"
+            className="w-full text-left px-3 py-2 rounded-md hover:bg-red-50 text-red-600 font-medium"
           >
             Logout
           </button>
         </nav>
       </aside>
 
-      {/* サイドバーが閉じている時の開くボタン（デスクトップ用） */}
-      {!sidebarOpen && (
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="hidden sm:block absolute top-4 left-4 p-2 bg-gray-200 rounded z-10"
-        >
-          &lt;
-        </button>
-      )}
-
-      {/* メインコンテンツ */}
-      <div
-        className={`flex-1 flex flex-col transition-all duration-300 ${
-          sidebarOpen ? "sm:ml-64" : "sm:ml-0"
-        }`}
-      >
+      {/* メインエリア */}
+      <div className="flex-1 flex flex-col min-w-0">
         {/* ヘッダー */}
-        <header className="flex items-center bg-white px-4 h-14 border-b border-gray-300 shadow-sm relative">
-          {/* ハンバーガーメニュー（モバイル） */}
+        <header className="bg-white px-4 h-14 border-b border-gray-300 shadow-sm flex items-center">
+          {/* 常に表示されるハンバーガーボタン（閉じてても開けるように！） */}
           <button
-            className="sm:hidden p-2 bg-gray-200 rounded mr-4 z-10"
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded hover:bg-gray-200 mr-3 sm:hidden"
           >
             ☰
           </button>
 
-          {/* ページタイトル */}
-          <h1
-            className={`text-lg font-bold text-gray-800 transition-all duration-300 ${
-              sidebarOpen ? "sm:ml-0" : "sm:ml-0"
-            }`}
-          >
-            {getPageTitle()}
-          </h1>
+          {/* デスクトップでサイドバーが閉じているときに表示する開くボタン */}
+          {!sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="hidden sm:flex items-center p-2 rounded hover:bg-gray-200 mr-3 text-gray-600"
+            >
+              ←
+            </button>
+          )}
+
+          <h1 className="text-lg font-bold text-gray-800">{getPageTitle()}</h1>
         </header>
 
-        {/* メイン */}
-        <main className="flex-1 overflow-auto p-4">
+        {/* メインコンテンツ */}
+        <main className="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6">
           <Outlet />
         </main>
       </div>
+
+      {/* モバイル用オーバーレイ（サイドバー開いてる時だけ） */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 sm:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
     </div>
   );
 }
