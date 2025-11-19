@@ -1,3 +1,4 @@
+// frontend/src/components/chat/GroupChat.jsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { io } from "socket.io-client";
@@ -6,6 +7,7 @@ import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import Modal from "../ui/Modal";
 import { v4 as uuidv4 } from "uuid";
+import { Ban, VolumeX, MessageCircle, Users } from "lucide-react";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -24,8 +26,8 @@ export default function GroupChat({ groupId }) {
   const [members, setMembers] = useState([]);
   const [isBanned, setIsBanned] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [groupName, setGroupName] = useState("チャット");
 
-  // ページネーション用
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -47,16 +49,32 @@ export default function GroupChat({ groupId }) {
     return () => newSocket.disconnect();
   }, [user]);
 
-  // メンバー取得 & Socket登録 & メッセージ取得
+  // メンバー取得 + グループ名取得 + Socket設定
   useEffect(() => {
     if (!user || !groupId || !socket) return;
 
     const fetchMembersAndSetup = async () => {
       try {
-        const { data } = await axios.get(`${API_URL}/groupmembers/${groupId}`);
-        setMembers(data);
+        const { data: memberData } = await axios.get(
+          `${API_URL}/groupmembers/${groupId}`
+        );
+        setMembers(memberData);
 
-        const me = data.find((m) => m.userId._id === user.uid);
+        // グループ名取得（エラーでも落ちないように！）
+        try {
+          const { data: groupData } = await axios.get(
+            `${API_URL}/groups/${groupId}`
+          );
+          setGroupName(groupData.name || "個人チャット");
+        } catch (error) {
+          console.warn(
+            "グループ名の取得に失敗しました → デフォルト名を使用",
+            error
+          );
+          setGroupName("個人チャット");
+        }
+
+        const me = memberData.find((m) => m.userId._id === user.uid);
         if (me?.isBanned) {
           showModal("あなたはBANされています。チャットに参加できません。");
           setIsBanned(true);
@@ -66,53 +84,51 @@ export default function GroupChat({ groupId }) {
           socket.emit("joinGroup", { groupId, userId: user.uid });
         }
 
-        // BANイベント
-        socket.on("member_banned", ({ userId, action }) => {
-          if (userId === user.uid) {
-            const isCurrentlyBanned = action === "ban";
-            setIsBanned(isCurrentlyBanned);
+        // リアルタイムイベント登録
+        socket.on("member_banned", ({ userId: uid, action }) => {
+          if (uid === user.uid) {
+            const banned = action === "ban";
+            setIsBanned(banned);
             showModal(
-              isCurrentlyBanned
+              banned
                 ? "あなたはグループからBANされました。"
-                : "あなたはグループのBANを解除されました。"
+                : "BANが解除されました。"
             );
           }
         });
 
-        // ミュートイベント
-        socket.on("member_muted", ({ userId, action }) => {
-          if (userId === user.uid) {
-            const isCurrentlyMuted = action === "mute";
-            setIsMuted(isCurrentlyMuted);
+        socket.on("member_muted", ({ userId: uid, action }) => {
+          if (uid === user.uid) {
+            const muted = action === "mute";
+            setIsMuted(muted);
             showModal(
-              isCurrentlyMuted
-                ? "あなたはミュートされました。メッセージを送信できません。"
-                : "あなたはミュートを解除されました。"
+              muted
+                ? "あなたはミュートされました。"
+                : "ミュートが解除されました。"
             );
           }
         });
 
-        // メッセージ受信
         socket.on("message_received", ({ groupId: gId, message }) => {
           if (gId !== groupId) return;
-          const normalizedMsg = {
-            ...message,
-            sender:
-              typeof message.sender === "string"
-                ? message.sender
-                : message.sender?._id || "unknown",
-          };
+          const senderId =
+            typeof message.sender === "string"
+              ? message.sender
+              : message.sender?._id;
+          if (senderId === user.uid) return;
+
+          const normalizedMsg = { ...message, sender: senderId || "unknown" };
           setMessages((prev) => [...prev, normalizedMsg]);
         });
 
-        // 既読更新
         socket.on("readStatusUpdated", (updatedMsg) => {
+          const senderId =
+            typeof updatedMsg.sender === "string"
+              ? updatedMsg.sender
+              : updatedMsg.sender?._id;
           const normalizedMsg = {
             ...updatedMsg,
-            sender:
-              typeof updatedMsg.sender === "string"
-                ? updatedMsg.sender
-                : updatedMsg.sender?._id || "unknown",
+            sender: senderId || "unknown",
           };
           setMessages((prev) =>
             prev.map((msg) =>
@@ -121,9 +137,11 @@ export default function GroupChat({ groupId }) {
           );
         });
 
+        // 初回メッセージ取得
         fetchMessages();
       } catch (err) {
-        console.error("メンバー取得に失敗:", err);
+        console.error("メンバーまたはグループ情報の取得に失敗:", err);
+        showModal("チャットの読み込みに失敗しました");
       } finally {
         setLoading(false);
       }
@@ -139,7 +157,7 @@ export default function GroupChat({ groupId }) {
     };
   }, [user, groupId, socket]);
 
-  // 初期メッセージ取得
+  // メッセージ取得
   const fetchMessages = useCallback(async () => {
     if (!user) return;
     try {
@@ -154,7 +172,7 @@ export default function GroupChat({ groupId }) {
             ? msg.sender
             : msg.sender?._id || "unknown",
       }));
-      setMessages(normalized); // ← reverseは不要
+      setMessages(normalized);
       setHasMore(normalized.length === 20);
       setPage(2);
     } catch (err) {
@@ -165,7 +183,7 @@ export default function GroupChat({ groupId }) {
     }
   }, [groupId, user]);
 
-  // 古いメッセージを読み込む
+  // 過去メッセージ読み込み
   const loadMoreMessages = useCallback(async () => {
     if (!user || !hasMore || loadingMore) return;
     try {
@@ -181,83 +199,38 @@ export default function GroupChat({ groupId }) {
             : msg.sender?._id || "unknown",
       }));
       if (normalized.length > 0) {
-        setMessages((prev) => [...normalized, ...prev]); // ← reverseは不要
+        setMessages((prev) => [...normalized, ...prev]);
         setPage((prev) => prev + 1);
         setHasMore(normalized.length === 20);
       } else {
         setHasMore(false);
       }
     } catch (err) {
-      console.error("古いメッセージの読み込みに失敗:", err);
+      console.error("過去メッセージ読み込み失敗:", err);
     } finally {
       setLoadingMore(false);
     }
   }, [user, groupId, page, hasMore, loadingMore]);
 
-  // 既読処理
-  const handleMarkAsRead = useCallback(
-    async (messageId) => {
-      if (!user) return;
-      try {
-        await axios.post(`${API_URL}/messages/${messageId}/read`, {
-          userId: user.uid,
-        });
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === messageId
-              ? { ...msg, readBy: [...(msg.readBy || []), user.uid] }
-              : msg
-          )
-        );
-      } catch (err) {
-        console.error("既読更新に失敗:", err);
-      }
-    },
-    [user]
-  );
-
-  useEffect(() => {
-    if (!user || isBanned) return;
-    messages.forEach((msg) => {
-      if (msg.sender !== user.uid && !msg.readBy?.includes(user.uid)) {
-        handleMarkAsRead(msg._id);
-      }
-    });
-  }, [messages, user, handleMarkAsRead, isBanned]);
-
-  // 新規メッセージが来たときにスクロール制御
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const isAtBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight <
-      50;
-
-    if (isAtBottom && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
-
   // メッセージ送信
   const handleSendMessage = async (text, fileData) => {
-    if (!user || (!text && !fileData)) return;
+    if (!user || (!text?.trim() && !fileData)) return;
 
     const tempId = uuidv4();
     const tempMessage = {
       _tempId: tempId,
       sender: user.uid,
-      text,
+      text: text?.trim() || "",
       fileUrl: fileData ? URL.createObjectURL(fileData) : null,
       createdAt: new Date().toISOString(),
-      readBy: [],
+      readBy: [user.uid],
     };
 
     setMessages((prev) => [...prev, tempMessage]);
 
     try {
       const formData = new FormData();
-      formData.append("text", text);
+      formData.append("text", text?.trim() || "");
       if (fileData) formData.append("file", fileData);
 
       const { data } = await axios.post(
@@ -280,71 +253,110 @@ export default function GroupChat({ groupId }) {
 
       socket?.emit("send_message", { groupId, message: normalizedRes });
     } catch (err) {
-      console.error("メッセージ送信失敗:", err);
+      console.error("送信失敗:", err);
       showModal("メッセージの送信に失敗しました");
       setMessages((prev) => prev.filter((msg) => msg._tempId !== tempId));
     }
   };
 
-  if (!user) return <div>ユーザーを認証しています...</div>;
-  if (loading)
-    return <div className="text-center p-4">メッセージを取得中...</div>;
-
-  if (isBanned) {
+  // 認証中
+  if (!user)
     return (
-      <div className="flex flex-col h-screen p-2 sm:p-4 bg-gray-100 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-2 sm:mb-4 text-center">
-          グループチャット
-        </h2>
-        <Modal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          message={modalMessage}
-        />
-        <div className="flex-1 flex items-center justify-center text-gray-500 text-lg text-center">
-          あなたはBANされているため、
-          <br />
-          チャットに参加できません。
+      <div className="flex items-center justify-center h-screen text-gray-500">
+        認証中...
+      </div>
+    );
+
+  // 読み込み中
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-xl font-medium text-gray-700">読み込み中...</p>
         </div>
       </div>
     );
   }
 
+  // BAN中
+  if (isBanned) {
+    return (
+      <div className="flex flex-col h-screen bg-gradient-to-br from-red-50 to-pink-50">
+        <div className="bg-white/90 backdrop-blur-sm border-b border-red-200 p-8 text-center">
+          <Ban className="w-20 h-20 text-red-600 mx-auto mb-4" />
+          <h2 className="text-3xl font-bold text-red-700">{groupName}</h2>
+          <p className="text-xl text-red-600 mt-6">
+            あなたはこのグループからBANされています
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // メイン画面
   return (
-    <div className="flex flex-col h-screen p-2 sm:p-4 bg-gray-100 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-2 sm:mb-4 text-center">
-        グループチャット
-      </h2>
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        message={modalMessage}
-      />
-      <MessageList
-        messages={messages}
-        currentUserId={user.uid}
-        onLoadMore={loadMoreMessages}
-        hasMore={hasMore}
-        loadingMore={loadingMore}
-        messagesEndRef={messagesEndRef}
-        scrollContainerRef={scrollContainerRef}
-      />
-      <MessageInput
-        groupId={groupId}
-        socket={socket}
-        user={user}
-        newMessage={newMessage}
-        setNewMessage={setNewMessage}
-        file={file}
-        setFile={setFile}
-        previewUrl={previewUrl}
-        setPreviewUrl={setPreviewUrl}
-        fileInputRef={fileInputRef}
-        showModal={showModal}
-        setMessages={setMessages}
-        onSendMessage={handleSendMessage}
-        isMuted={isMuted}
-      />
+    <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* ヘッダー */}
+      <header className="bg-white/90 backdrop-blur-sm border-b border-gray-200 px-6 py-5 shadow-sm sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <MessageCircle className="w-10 h-10 text-purple-600" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">{groupName}</h1>
+              <p className="text-sm text-gray-500 flex items-center gap-2">
+                <Users size={16} />
+                {members.length}人のメンバー
+                {isMuted && (
+                  <span className="ml-3 text-orange-600 flex items-center gap-1">
+                    <VolumeX size={16} /> ミュート中
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* メインエリア */}
+      <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full">
+        <Modal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          message={modalMessage}
+        />
+
+        <div className="flex-1 bg-white/80 backdrop-blur-sm border-x border-gray-200 overflow-hidden">
+          <MessageList
+            messages={messages}
+            currentUserId={user.uid}
+            onLoadMore={loadMoreMessages}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            messagesEndRef={messagesEndRef}
+            scrollContainerRef={scrollContainerRef}
+          />
+        </div>
+
+        <div className="border-t border-x border-gray-200 bg-white/90 backdrop-blur-sm rounded-b-3xl shadow-lg">
+          <MessageInput
+            groupId={groupId}
+            socket={socket}
+            user={user}
+            newMessage={newMessage}
+            setNewMessage={setNewMessage}
+            file={file}
+            setFile={setFile}
+            previewUrl={previewUrl}
+            setPreviewUrl={setPreviewUrl}
+            fileInputRef={fileInputRef}
+            showModal={showModal}
+            setMessages={setMessages}
+            onSendMessage={handleSendMessage}
+            isMuted={isMuted}
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -227,4 +227,82 @@ router.patch("/:id/members", async (req, res) => {
   }
 });
 
+// -----------------------------
+// GET /api/groups/:id
+// グループ詳細取得（チャット画面で必要！！）
+// -----------------------------
+router.get("/:id", async (req, res) => {
+  try {
+    const groupId = req.params.id;
+
+    // グループ本体を取得
+    const group = await Group.findById(groupId).lean();
+    if (!group) {
+      return res.status(404).json({ message: "グループが見つかりません" });
+    }
+
+    // メンバー一覧も一緒に返す（チャットヘッダーに人数表示したいので）
+    const memberDocs = await GroupMember.find({ groupId }).populate(
+      "userId",
+      "name"
+    );
+
+    const members = memberDocs.map((m) => ({
+      _id: m._id,
+      userId: {
+        _id: m.userId._id,
+        name: m.userId.name,
+      },
+      isAdmin: m.isAdmin,
+      isBanned: m.isBanned,
+      isMuted: m.isMuted,
+    }));
+
+    res.json({
+      ...group,
+      members, // ← これでチャット画面の「○人のメンバー」が表示される
+      memberCount: members.length, // ← なくてもいいけど便利
+    });
+  } catch (err) {
+    console.error("グループ詳細取得エラー:", err);
+    res.status(500).json({ message: "サーバーエラー" });
+  }
+});
+
+// -----------------------------
+// GET /api/groups/admin-groups/:userId
+// 管理者が管理グループ一覧（人数付き）
+// -----------------------------
+router.get("/admin-groups/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // 自分が管理者のグループを取得
+    const adminMemberships = await GroupMember.find({
+      userId,
+      isAdmin: true,
+    }).lean();
+
+    const groupIds = adminMemberships.map((m) => m.groupId);
+
+    const groups = await Group.find({ _id: { $in: groupIds } }).lean();
+
+    // 各グループに人数を付与
+    const groupsWithCount = await Promise.all(
+      groups.map(async (group) => {
+        const count = await GroupMember.countDocuments({ groupId: group._id });
+        return {
+          ...group,
+          memberCount: count,
+        };
+      })
+    );
+
+    res.json(groupsWithCount);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "管理グループ取得に失敗" });
+  }
+});
+
 module.exports = router;
