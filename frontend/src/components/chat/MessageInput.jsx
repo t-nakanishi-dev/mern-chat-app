@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import GifSearch from "./GifSearch";
+import { Paperclip, Send } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -12,7 +13,6 @@ const ALLOWED_TYPES = [
   "application/pdf",
 ];
 
-// isMutedを受け取り、送信や入力を制御
 export default function MessageInput({
   groupId,
   socket,
@@ -35,9 +35,8 @@ export default function MessageInput({
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
 
-    // ファイル形式チェック
     if (!ALLOWED_TYPES.includes(selectedFile.type)) {
-      showModal("⚠️ この種類のファイルは送信できません");
+      showModal("この種類のファイルは送信できません");
       e.target.value = "";
       setFile(null);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -45,9 +44,8 @@ export default function MessageInput({
       return;
     }
 
-    // ファイルサイズチェック
     if (selectedFile.size > MAX_SIZE) {
-      showModal("⚠️ ファイルサイズは5MBまでです");
+      showModal("ファイルサイズは5MBまでです");
       return;
     }
 
@@ -62,40 +60,29 @@ export default function MessageInput({
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-
-    // ミュート中は送信不可
-    if (isMuted) {
-      showModal("あなたはミュートされているため、メッセージを送信できません。");
-      return;
-    }
-
-    if (!newMessage.trim() && !file) return;
-
+    if (isMuted || (!newMessage.trim() && !file)) return;
     if (!navigator.onLine) {
-      showModal("⚠️ オフラインです。ネットワークを確認してください。");
+      showModal("オフラインです。ネットワークを確認してください。");
       return;
     }
 
-    // 楽観的メッセージ表示
     const tempMessage = {
       _id: "temp-" + Date.now(),
       group: groupId,
       sender: user.uid,
       text: newMessage,
-      file: previewUrl || null,
+      fileUrl: previewUrl || null,
       createdAt: new Date().toISOString(),
       pending: true,
     };
-    if (typeof setMessages === "function") {
-      setMessages((prev) => [...prev, tempMessage]);
-    }
+    setMessages?.((prev) => [...prev, tempMessage]);
 
     try {
       const formData = new FormData();
       formData.append("group", groupId);
       formData.append("sender", user.uid);
       if (file) formData.append("file", file);
-      if (newMessage.trim() !== "") formData.append("text", newMessage);
+      if (newMessage.trim()) formData.append("text", newMessage);
 
       const res = await axios.post(`${API_URL}/messages`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -104,88 +91,106 @@ export default function MessageInput({
 
       socket.emit("groupMessage", res.data);
 
-      // 仮メッセージを本物に置き換え
-      if (typeof setMessages === "function") {
-        setMessages((prev) =>
-          prev.map((msg) => (msg._id === tempMessage._id ? res.data : msg))
-        );
-      }
+      setMessages?.((prev) =>
+        prev.map((msg) => (msg._id === tempMessage._id ? res.data : msg))
+      );
 
       setNewMessage("");
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
-      }
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
     } catch (err) {
-      console.error("メッセージ送信に失敗:", err);
-      showModal("⚠️ メッセージ送信に失敗しました");
-
-      if (typeof setMessages === "function") {
-        setMessages((prev) =>
-          prev.filter((msg) => msg._id !== tempMessage._id)
-        );
-      }
+      console.error("送信失敗:", err);
+      showModal("メッセージ送信に失敗しました");
+      setMessages?.((prev) =>
+        prev.filter((msg) => msg._id !== tempMessage._id)
+      );
     }
   };
 
   return (
-    <form onSubmit={handleSendMessage} className="flex flex-col space-y-2">
-      <div className="flex flex-col sm:flex-row sm:space-x-2">
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          className="p-2 border border-gray-300 rounded-md w-full sm:w-1/4 mb-2 sm:mb-0"
-          disabled={isMuted}
-        />
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={
-            isMuted ? "あなたはミュートされています" : "メッセージを入力..."
-          }
-          className="flex-1 p-2 border border-gray-300 rounded-md"
-          disabled={isMuted}
-        />
-        <button
-          type="submit"
-          className={`px-4 py-2 text-white font-bold rounded-md transition-colors mt-2 sm:mt-0 ${
-            isMuted
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-blue-500 hover:bg-blue-600"
-          }`}
-          disabled={isMuted}
-        >
-          送信
-        </button>
-      </div>
-
+    <form
+      onSubmit={handleSendMessage}
+      className="p-4 bg-white/90 backdrop-blur-sm border-t border-gray-200"
+    >
+      {/* プレビュー */}
       {file && (
-        <div className="text-sm text-gray-700">
-          選択中のファイル: {file.name} ({(file.size / 1024).toFixed(1)} KB)
+        <div className="mb-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
+          <p className="text-sm text-gray-700 mb-2">
+            選択中: {file.name} ({(file.size / 1024).toFixed(1)} KB)
+          </p>
           {file.type.startsWith("image/") && previewUrl && (
             <img
               src={previewUrl}
-              alt="preview"
-              className="mt-2 max-h-32 rounded"
+              alt="プレビュー"
+              className="max-h-40 w-full object-contain rounded-lg shadow-md"
             />
           )}
         </div>
       )}
 
-      <GifSearch
-        gifQuery={gifQuery}
-        setGifQuery={setGifQuery}
-        gifResults={gifResults}
-        setGifResults={setGifResults}
-        socket={socket}
-        user={user}
-        groupId={groupId}
-        showModal={showModal}
-      />
+      {/* 入力エリア：アイコン＋入力＋送信 */}
+      <div className="flex items-center gap-3">
+        {/* ファイル添付アイコン（隠しinputをトリガー） */}
+        <label className="cursor-pointer">
+          <Paperclip
+            size={24}
+            className={`text-blue-600 hover:text-blue-800 transition ${
+              isMuted ? "opacity-50" : ""
+            }`}
+          />
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            disabled={isMuted}
+          />
+        </label>
+
+        {/* テキスト入力 */}
+        <input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder={isMuted ? "ミュート中..." : "メッセージを入力..."}
+          className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+          disabled={isMuted}
+        />
+
+        {/* 送信ボタン */}
+        <button
+          type="submit"
+          className={`p-3 rounded-full transition-all ${
+            isMuted
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl hover:scale-110"
+          }`}
+          disabled={isMuted}
+        >
+          <Send size={20} />
+        </button>
+      </div>
+
+      {/* GIF検索 */}
+      <div
+        className="mt-4"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        <GifSearch
+          gifQuery={gifQuery}
+          setGifQuery={setGifQuery}
+          gifResults={gifResults}
+          setGifResults={setGifResults}
+          socket={socket}
+          user={user}
+          groupId={groupId}
+          showModal={showModal}
+          setMessages={setMessages}
+        />
+      </div>
     </form>
   );
 }
