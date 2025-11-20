@@ -60,17 +60,13 @@ export default function GroupChat({ groupId }) {
         );
         setMembers(memberData);
 
-        // グループ名取得（エラーでも落ちないように！）
         try {
           const { data: groupData } = await axios.get(
             `${API_URL}/groups/${groupId}`
           );
           setGroupName(groupData.name || "個人チャット");
         } catch (error) {
-          console.warn(
-            "グループ名の取得に失敗しました → デフォルト名を使用",
-            error
-          );
+          console.warn("グループ名の取得に失敗 → デフォルト名を使用", error);
           setGroupName("個人チャット");
         }
 
@@ -84,7 +80,6 @@ export default function GroupChat({ groupId }) {
           socket.emit("joinGroup", { groupId, userId: user.uid });
         }
 
-        // リアルタイムイベント登録
         socket.on("member_banned", ({ userId: uid, action }) => {
           if (uid === user.uid) {
             const banned = action === "ban";
@@ -137,7 +132,6 @@ export default function GroupChat({ groupId }) {
           );
         });
 
-        // 初回メッセージ取得
         fetchMessages();
       } catch (err) {
         console.error("メンバーまたはグループ情報の取得に失敗:", err);
@@ -259,7 +253,33 @@ export default function GroupChat({ groupId }) {
     }
   };
 
-  // 認証中
+  // スマート自動スクロール（これが最後のピース！）
+  useEffect(() => {
+    if (!messagesEndRef.current || !scrollContainerRef.current) return;
+
+    const scrollContainer = scrollContainerRef.current;
+    const lastMessage = messages[messages.length - 1];
+
+    // 自分が送信したメッセージ → 必ず最下部へ
+    if (lastMessage?.sender === user?.uid) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+
+    // ユーザーが下にいるかどうか（100px以内なら「下にいる」と判定）
+    const isNearBottom =
+      scrollContainer.scrollHeight -
+        scrollContainer.scrollTop -
+        scrollContainer.clientHeight <
+      100;
+
+    // 下にいる場合のみ自動スクロール
+    if (isNearBottom) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, user?.uid]);
+
+  // 以下、表示部分（変更なし）
   if (!user)
     return (
       <div className="flex items-center justify-center h-screen text-gray-500">
@@ -267,7 +287,6 @@ export default function GroupChat({ groupId }) {
       </div>
     );
 
-  // 読み込み中
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
@@ -279,7 +298,6 @@ export default function GroupChat({ groupId }) {
     );
   }
 
-  // BAN中
   if (isBanned) {
     return (
       <div className="flex flex-col h-screen bg-gradient-to-br from-red-50 to-pink-50">
@@ -294,10 +312,8 @@ export default function GroupChat({ groupId }) {
     );
   }
 
-  // メイン画面
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* ヘッダー */}
       <header className="bg-white/90 backdrop-blur-sm border-b border-gray-200 px-6 py-5 shadow-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -318,7 +334,6 @@ export default function GroupChat({ groupId }) {
         </div>
       </header>
 
-      {/* メインエリア */}
       <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full">
         <Modal
           isOpen={isModalOpen}

@@ -1,7 +1,19 @@
+// frontend/src/components/chat/MessageList.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { format, isToday, isYesterday, parseISO } from "date-fns";
+import { ja } from "date-fns/locale";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+// 今日・昨日・日付を日本語で表示
+const formatDateLabel = (dateString) => {
+  if (!dateString) return "";
+  const date = parseISO(dateString);
+  if (isToday(date)) return "今日";
+  if (isYesterday(date)) return "昨日";
+  return format(date, "yyyy年M月d日", { locale: ja });
+};
 
 export default function MessageList({
   messages,
@@ -19,7 +31,7 @@ export default function MessageList({
           const res = await axios.get(`${API_URL}/users/${uid}`);
           setUserProfiles((prev) => ({ ...prev, [uid]: res.data }));
         } catch (err) {
-          console.error("⚠️ ユーザー情報取得失敗:", uid, err);
+          console.error("ユーザー情報取得失敗:", uid, err);
         }
       }
     });
@@ -32,70 +44,90 @@ export default function MessageList({
       style={{ maxHeight: "calc(100vh - 240px)" }}
     >
       {messages.length > 0 ? (
-        messages.map((msg) => {
+        messages.map((msg, index) => {
           const profile = userProfiles[msg.sender] || {};
           const isCurrentUser = msg.sender === currentUserId;
 
-          return (
-            <div
-              key={msg._id || msg._tempId}
-              className={`flex mb-2 ${
-                isCurrentUser ? "justify-end" : "justify-start"
-              }`}
-            >
-              <div
-                className={`flex ${
-                  isCurrentUser ? "flex-row-reverse" : "flex-row"
-                } max-w-[70%]`}
-              >
-                {profile.iconUrl && (
-                  <img
-                    src={profile.iconUrl}
-                    alt="icon"
-                    className={`w-10 h-10 rounded-full object-cover flex-shrink-0 ${
-                      isCurrentUser ? "ml-2" : "mr-2"
-                    }`}
-                  />
-                )}
+          // 前のメッセージと日付が違う場合 → 日付セパレーターを表示
+          const prevMsg = messages[index - 1];
+          const currentDate = msg.createdAt?.split("T")[0];
+          const prevDate = prevMsg?.createdAt?.split("T")[0];
+          const showDateSeparator = currentDate && currentDate !== prevDate;
 
+          return (
+            <div key={msg._id || msg._tempId || index}>
+              {/* 日付セパレーター（LINE風） */}
+              {showDateSeparator && (
+                <div className="my-8 text-center">
+                  <span className="bg-gray-100 text-gray-600 text-xs font-bold px-5 py-2 rounded-full shadow-sm border border-gray-300">
+                    {formatDateLabel(msg.createdAt)}
+                  </span>
+                </div>
+              )}
+
+              {/* メッセージ本体（今まで通り100%そのまま！） */}
+              <div
+                className={`flex mb-2 ${
+                  isCurrentUser ? "justify-end" : "justify-start"
+                }`}
+              >
                 <div
-                  className={`p-2 rounded-lg ${
-                    isCurrentUser
-                      ? "bg-blue-200 text-right"
-                      : "bg-gray-200 text-left"
-                  }`}
+                  className={`flex ${
+                    isCurrentUser ? "flex-row-reverse" : "flex-row"
+                  } max-w-[70%]`}
                 >
-                  <p className="font-bold text-sm">
-                    {profile.name || msg.sender.slice(0, 8)}
-                  </p>
-                  {msg.text && <p>{msg.text}</p>}
-                  {msg.fileUrl && (
+                  {profile.iconUrl && (
                     <img
-                      src={msg.fileUrl}
-                      alt="添付"
-                      className="mt-1 rounded max-w-full"
+                      src={profile.iconUrl}
+                      alt="icon"
+                      className={`w-10 h-10 rounded-full object-cover flex-shrink-0 ${
+                        isCurrentUser ? "ml-2" : "mr-2"
+                      }`}
                     />
                   )}
-                  <div className="text-xs text-gray-500 mt-1">
-                    {msg.createdAt
-                      ? new Date(msg.createdAt).toLocaleTimeString()
-                      : ""}
-                  </div>
-                  {isCurrentUser && (
-                    <p className="text-xs text-gray-500">
-                      {`既読: ${
-                        msg.readBy?.filter((id) => id !== currentUserId)
-                          .length || 0
-                      }人`}
+
+                  <div
+                    className={`p-3 rounded-2xl shadow-sm ${
+                      isCurrentUser
+                        ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+                        : "bg-gray-100 text-gray-800 border border-gray-200"
+                    }`}
+                  >
+                    <p className="font-bold text-sm text-gray-800 mb-1">
+                      {profile.name || msg.sender.slice(0, 8)}
                     </p>
-                  )}
+                    {msg.text && <p className="break-words">{msg.text}</p>}
+                    {msg.fileUrl && (
+                      <img
+                        src={msg.fileUrl}
+                        alt="添付"
+                        className="mt-2 rounded-lg max-w-full shadow-sm"
+                      />
+                    )}
+                    <div className="text-xs text-gray-400 mt-2 text-right">
+                      {msg.createdAt
+                        ? new Date(msg.createdAt).toLocaleTimeString("ja-JP", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : ""}
+                    </div>
+                    {isCurrentUser && (
+                      <p className="text-xs text-white/80 text-right">
+                        既読{" "}
+                        {msg.readBy?.filter((id) => id !== currentUserId)
+                          .length || 0}
+                        人
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           );
         })
       ) : (
-        <p className="text-center text-gray-500">
+        <p className="text-center text-gray-500 mt-10">
           まだメッセージがありません。
         </p>
       )}
