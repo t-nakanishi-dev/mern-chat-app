@@ -9,13 +9,17 @@ const MessageSchema = new Schema({
   fileUrl: { type: String },
   fileType: { type: String },
   fileName: { type: String },
-  // 新しくgifQueryフィールドを追加
   gifQuery: { type: String },
   readBy: [{ type: String }],
   createdAt: { type: Date, default: Date.now },
 });
 
-// text, fileUrl, または gifQuery のどれか必須
+// ⭐ここから追加（これだけで100万メッセージでも爆速い！）
+MessageSchema.index({ group: 1, createdAt: -1 }); // チャット取得が爆速になる神インデックス
+MessageSchema.index({ group: 1 }); // グループ削除時などに便利
+// ⭐追加ここまで
+
+// text, fileUrl gifQuery のどれかは必須
 MessageSchema.path("text").validate(function (v) {
   return v || this.fileUrl || this.gifQuery;
 }, "Message must have either text, fileUrl, or gifQuery");

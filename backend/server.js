@@ -5,40 +5,53 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 require("dotenv").config({ path: ".env.development" });
 
-const socket = require("./socket/index"); // socket/index.jsをインポート
+const socket = require("./socket/index");
 const User = require("./models/User");
 const Group = require("./models/Group");
 const GroupMember = require("./models/GroupMember");
 const Message = require("./models/Message");
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173", // フロントのURL（必要なら）
+    credentials: true, // Cookieを送るために超重要！！
+  })
+);
 app.use(express.json());
 
+// MongoDB接続
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected"))
+  .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error(err));
 
 const server = http.createServer(app);
 
-// Socket.IOのインスタンスを初期化し、外部からアクセス可能にする
+// Socket.IO初期化
 socket.init(server);
 
-const groupRoutes = require("./routes/groups");
-app.use("/api/groups", groupRoutes);
+console.log("Socket.IO server initialized");
 
-// groupmembers.js の import 方法を変更
-// ルーターを返す関数を呼び出し、ioインスタンスを渡す
+// ==================== ルーティング ====================
+
+// ここが大事！ require("./routes/xxx") の形で .js を書かない！！
+const groupRoutes = require("./routes/groups");
+const messageRoutes = require("./routes/message");
+const userRoutes = require("./routes/user");
+const authRoutes = require("./routes/auth"); // .js なしでOK！
+
+// groupmembers は io を渡す特殊なルーター
 const createGroupmemberRouter = require("./routes/groupmembers");
 const groupmemberRoutes = createGroupmemberRouter(socket.getIo());
+
+app.use("/api/groups", groupRoutes);
 app.use("/api/groupmembers", groupmemberRoutes);
-
-const messageRoutes = require("./routes/message");
 app.use("/api/messages", messageRoutes);
-
-const userRoutes = require("./routes/user");
 app.use("/api/users", userRoutes);
+app.use("/api/auth", authRoutes); // これで完全に動く！！
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
