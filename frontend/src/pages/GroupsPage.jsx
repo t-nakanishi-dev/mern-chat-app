@@ -12,6 +12,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 export default function GroupsPage() {
   const [groups, setGroups] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const [socket, setSocket] = useState(null);
 
   // Firebase認証リスナー
@@ -27,24 +28,33 @@ export default function GroupsPage() {
   // Socket.IO接続
   useEffect(() => {
     if (!currentUserId) return;
-    const s = io(API_URL);
+
+    const s = io(API_URL, {
+      query: { userId: currentUserId }, // ← これを追加！！
+      transports: ["websocket", "polling"], // 明示的に両方許可（デフォルトでもOKだが念のため）
+    });
+
     setSocket(s);
-    console.log("🔌 Socket.IO connecting...");
+    console.log("🔌 Socket.IO connecting... with userId:", currentUserId);
 
     s.emit("joinGroup", { userId: currentUserId });
 
-    s.on("message_received", ({ groupId, message, selfOnly }) => {
-      console.log("📩 message_received:", { groupId, message, selfOnly });
-      if (!selfOnly && message.senderId !== currentUserId) {
-        setGroups((prevGroups) =>
-          prevGroups.map((group) =>
-            group._id === groupId
-              ? { ...group, unreadCount: (group.unreadCount || 0) + 1 }
-              : group
-          )
-        );
-      }
-    });
+    s.on(
+      "message_received",
+      ({ groupId, message, selfOnly }) => {
+        console.log("📩 message_received:", { groupId, message, selfOnly });
+        if (!selfOnly && message.senderId !== currentUserId) {
+          setGroups((prevGroups) =>
+            prevGroups.map((group) =>
+              group._id === groupId
+                ? { ...group, unreadCount: (group.unreadCount || 0) + 1 }
+                : group,
+            ),
+          );
+        }
+      },
+      [currentUserId],
+    );
 
     s.on("readStatusUpdated", (updatedMessage) => {
       console.log("✅ readStatusUpdated:", updatedMessage);
@@ -55,7 +65,7 @@ export default function GroupsPage() {
             return { ...group, unreadCount: newCount > 0 ? newCount : 0 };
           }
           return group;
-        })
+        }),
       );
     });
 
@@ -75,13 +85,11 @@ export default function GroupsPage() {
     if (!currentUserId) return;
     try {
       const res = await axios.get(
-        `${API_URL}/groupmembers/user/${currentUserId}`
+        `${API_URL}/groupmembers/user/${currentUserId}`,
       );
-      console.log(
-        "🔄 fetchGroups result:",
-        res.data.map((m) => m.groupId)
-      );
-      const userGroups = res.data.map((member) => member.groupId);
+      const userGroups = res.data
+        .filter((member) => member.groupId?._id) // _idがあるものだけ
+        .map((member) => member.groupId);
       setGroups(userGroups);
     } catch (err) {
       console.error("チャット一覧取得失敗:", err);

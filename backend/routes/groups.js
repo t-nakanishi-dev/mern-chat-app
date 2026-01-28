@@ -104,7 +104,7 @@ router.get("/", async (req, res) => {
           sender: { $ne: userId },
         });
         return { ...group, unreadCount };
-      })
+      }),
     );
 
     res.json(groupsWithUnread);
@@ -244,7 +244,7 @@ router.get("/:id", async (req, res) => {
     // メンバー一覧も一緒に返す（チャットヘッダーに人数表示したいので）
     const memberDocs = await GroupMember.find({ groupId }).populate(
       "userId",
-      "name"
+      "name",
     );
 
     const members = memberDocs.map((m) => ({
@@ -295,7 +295,7 @@ router.get("/admin-groups/:userId", async (req, res) => {
           ...group,
           memberCount: count,
         };
-      })
+      }),
     );
 
     res.json(groupsWithCount);

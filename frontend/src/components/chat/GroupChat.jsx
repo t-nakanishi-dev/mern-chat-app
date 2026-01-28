@@ -56,19 +56,25 @@ export default function GroupChat({ groupId }) {
     const fetchMembersAndSetup = async () => {
       try {
         const { data: memberData } = await axios.get(
-          `${API_URL}/groupmembers/${groupId}`
+          `${API_URL}/groupmembers/${groupId}`,
         );
         setMembers(memberData);
 
-        try {
-          const { data: groupData } = await axios.get(
-            `${API_URL}/groups/${groupId}`
-          );
-          setGroupName(groupData.name || "個人チャット");
-        } catch (error) {
-          console.warn("グループ名の取得に失敗 → デフォルト名を使用", error);
-          setGroupName("個人チャット");
+        const { data: groupData } = await axios.get(
+          `${API_URL}/groups/${groupId}`,
+        );
+
+        // ★ここを修正：privateチャットの場合は相手の名前を表示
+        let displayName = groupData.name || "個人チャット";
+        if (groupData.type === "private" && memberData.length >= 2) {
+          const otherMember = memberData.find((m) => m.userId._id !== user.uid);
+          if (otherMember?.userId?.name) {
+            displayName = otherMember.userId.name;
+            // 好みで「あなたと〇〇」にしたい場合は以下に変更
+            // displayName = `あなたと ${otherMember.userId.name}`;
+          }
         }
+        setGroupName(displayName);
 
         const me = memberData.find((m) => m.userId._id === user.uid);
         if (me?.isBanned) {
@@ -87,7 +93,7 @@ export default function GroupChat({ groupId }) {
             showModal(
               banned
                 ? "あなたはグループからBANされました。"
-                : "BANが解除されました。"
+                : "BANが解除されました。",
             );
           }
         });
@@ -99,7 +105,7 @@ export default function GroupChat({ groupId }) {
             showModal(
               muted
                 ? "あなたはミュートされました。"
-                : "ミュートが解除されました。"
+                : "ミュートが解除されました。",
             );
           }
         });
@@ -127,8 +133,8 @@ export default function GroupChat({ groupId }) {
           };
           setMessages((prev) =>
             prev.map((msg) =>
-              msg._id === normalizedMsg._id ? normalizedMsg : msg
-            )
+              msg._id === normalizedMsg._id ? normalizedMsg : msg,
+            ),
           );
         });
 
@@ -230,7 +236,7 @@ export default function GroupChat({ groupId }) {
       const { data } = await axios.post(
         `${API_URL}/messages/group/${groupId}`,
         formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
+        { headers: { "Content-Type": "multipart/form-data" } },
       );
 
       const normalizedRes = {
@@ -242,7 +248,7 @@ export default function GroupChat({ groupId }) {
       };
 
       setMessages((prev) =>
-        prev.map((msg) => (msg._tempId === tempId ? normalizedRes : msg))
+        prev.map((msg) => (msg._tempId === tempId ? normalizedRes : msg)),
       );
 
       socket?.emit("send_message", { groupId, message: normalizedRes });
