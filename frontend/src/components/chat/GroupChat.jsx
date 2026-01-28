@@ -111,6 +111,7 @@ export default function GroupChat({ groupId }) {
         });
 
         socket.on("message_received", ({ groupId: gId, message }) => {
+          console.log("相手からmessage_received受信！", { gId, message });
           if (gId !== groupId) return;
           const senderId =
             typeof message.sender === "string"
@@ -223,7 +224,7 @@ export default function GroupChat({ groupId }) {
       text: text?.trim() || "",
       fileUrl: fileData ? URL.createObjectURL(fileData) : null,
       createdAt: new Date().toISOString(),
-      readBy: [user.uid],
+      readBy: [user.uid], // 送信時点で自分を既読に
     };
 
     setMessages((prev) => [...prev, tempMessage]);
@@ -356,6 +357,7 @@ export default function GroupChat({ groupId }) {
             loadingMore={loadingMore}
             messagesEndRef={messagesEndRef}
             scrollContainerRef={scrollContainerRef}
+            socket={socket} // ← ここを追加！！
           />
         </div>
 

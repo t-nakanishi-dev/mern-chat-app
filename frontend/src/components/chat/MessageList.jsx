@@ -20,9 +20,11 @@ export default function MessageList({
   currentUserId,
   messagesEndRef,
   scrollContainerRef,
+  socket, // ← 新規追加：socket を受け取る
 }) {
   const [userProfiles, setUserProfiles] = useState({});
 
+  // ユーザー情報取得（変更なし）
   useEffect(() => {
     const uniqueUserIds = [...new Set(messages.map((m) => m.sender))];
     uniqueUserIds.forEach(async (uid) => {
@@ -35,7 +37,35 @@ export default function MessageList({
         }
       }
     });
-  }, [messages]);
+  }, [messages, userProfiles]); // userProfiles を依存に追加（安全のため）
+
+  // ★ 新規追加：未読メッセージを既読にする
+  useEffect(() => {
+    if (!socket || !currentUserId || messages.length === 0) return;
+
+    const markAsRead = async () => {
+      const unreadMessages = messages.filter(
+        (msg) =>
+          msg.sender !== currentUserId && // 自分が送ったものは除外
+          !msg.readBy?.includes(currentUserId), // まだ既読でないもの
+      );
+
+      if (unreadMessages.length === 0) return;
+
+      for (const msg of unreadMessages) {
+        try {
+          await axios.post(`${API_URL}/messages/${msg._id}/read`, {
+            userId: currentUserId,
+          });
+          console.log(`既読マーク完了: ${msg._id}`);
+        } catch (err) {
+          console.error(`既読マーク失敗: ${msg._id}`, err);
+        }
+      }
+    };
+
+    markAsRead();
+  }, [messages, currentUserId, socket]);
 
   return (
     <div
@@ -48,7 +78,6 @@ export default function MessageList({
           const profile = userProfiles[msg.sender] || {};
           const isCurrentUser = msg.sender === currentUserId;
 
-          // 前のメッセージと日付が違う場合 → 日付セパレーターを表示
           const prevMsg = messages[index - 1];
           const currentDate = msg.createdAt?.split("T")[0];
           const prevDate = prevMsg?.createdAt?.split("T")[0];
@@ -56,7 +85,6 @@ export default function MessageList({
 
           return (
             <div key={msg._id || msg._tempId || index}>
-              {/* 日付セパレーター（LINE風） */}
               {showDateSeparator && (
                 <div className="my-8 text-center">
                   <span className="bg-gray-100 text-gray-600 text-xs font-bold px-5 py-2 rounded-full shadow-sm border border-gray-300">
@@ -65,7 +93,6 @@ export default function MessageList({
                 </div>
               )}
 
-              {/* メッセージ本体（今まで通り100%そのまま！） */}
               <div
                 className={`flex mb-2 ${
                   isCurrentUser ? "justify-end" : "justify-start"

@@ -11,7 +11,7 @@ const { getIo } = require("../socket/index.js");
 
 const router = express.Router();
 
-// Firebase初期化
+// Firebase初期化（変更なし）
 let serviceAccount;
 try {
   serviceAccount = require("../serviceAccountKey.json");
@@ -32,7 +32,7 @@ initializeApp({
 
 const bucket = getStorage().bucket();
 
-// 許可MIMEタイプ
+// 許可MIMEタイプ（変更なし）
 const ALLOWED_TYPES = [
   "image/png",
   "image/jpeg",
@@ -68,7 +68,9 @@ router.post("/", upload.single("file"), async (req, res) => {
       file: req.file?.originalname,
     });
 
-    let fileUrl = null; // グループ所属チェック
+    if (!mongoose.Types.ObjectId.isValid(group)) {
+      return res.status(400).json({ message: "無効なグループIDです" });
+    }
 
     const membership = await GroupMember.findOne({
       userId: sender,
@@ -85,8 +87,9 @@ router.post("/", upload.single("file"), async (req, res) => {
       return res.status(403).json({
         message: "あなたはBANされているためメッセージを送信できません",
       });
-    } // ファイルアップロード処理
+    }
 
+    let fileUrl = null;
     if (req.file) {
       const fileName = `${Date.now()}-${req.file.originalname}`;
       const fileRef = bucket.file(fileName);
@@ -111,9 +114,10 @@ router.post("/", upload.single("file"), async (req, res) => {
       fileUrl,
       fileType: req.file?.mimetype,
       fileName: req.file?.originalname,
+      readBy: [sender], // ★重要：送信者を最初から既読にする
     });
     await message.save();
-    console.log("✅ Message saved:", message);
+    console.log("✅ Message saved:", message._id, "readBy:", message.readBy);
 
     const io = getIo();
 
@@ -128,7 +132,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       const groupMembers = await GroupMember.find({ groupId: group }).lean();
       console.log(
         "🧑‍🤝‍🧑 Broadcasting message to group members:",
-        groupMembers.map((m) => m.userId.toString())
+        groupMembers.map((m) => m.userId.toString()),
       );
       groupMembers.forEach((member) => {
         if (member.userId.toString() !== sender) {
@@ -147,7 +151,7 @@ router.post("/", upload.single("file"), async (req, res) => {
   }
 });
 
-// Multerエラー専用ハンドラー
+// Multerエラー専用ハンドラー（変更なし）
 router.use((err, req, res, next) => {
   console.error("⚠️ Multer error handler triggered:", err);
   if (err instanceof multer.MulterError) {
@@ -171,11 +175,14 @@ router.post("/gif", async (req, res) => {
     const { group, sender, fileUrl, gifQuery } = req.body;
     console.log("🎞️ GIF POST request:", { group, sender, fileUrl, gifQuery });
 
+    if (!mongoose.Types.ObjectId.isValid(group)) {
+      return res.status(400).json({ message: "無効なグループIDです" });
+    }
+
     const membership = await GroupMember.findOne({
       userId: sender,
       groupId: group,
     });
-    console.log("👤 Membership check:", membership);
 
     if (!membership)
       return res.status(403).json({ message: "グループに所属していません" });
@@ -186,14 +193,22 @@ router.post("/gif", async (req, res) => {
 
     if (!group || !sender || !fileUrl)
       return res.status(400).json({ message: "必須項目が不足しています" });
-    if (!mongoose.Types.ObjectId.isValid(group))
-      return res.status(400).json({ message: "無効なグループIDです" });
 
-    const message = new Message({ group, sender, text: "", fileUrl, gifQuery });
+    const message = new Message({
+      group,
+      sender,
+      text: "",
+      fileUrl,
+      gifQuery,
+      readBy: [sender], // ★重要：送信者を最初から既読にする
+    });
     await message.save();
-    console.log("✅ GIF saved:", message);
+    console.log("✅ GIF saved:", message._id, "readBy:", message.readBy);
 
     const io = getIo();
+
+    console.log("GIF保存完了 → broadcast開始");
+
     if (membership.isMuted) {
       console.log("🔇 User is muted, sending GIF only to self");
       io.to(sender.toString()).emit("message_received", {
@@ -204,16 +219,24 @@ router.post("/gif", async (req, res) => {
     } else {
       const groupMembers = await GroupMember.find({ groupId: group }).lean();
       console.log(
-        "🧑‍🤝‍🧑 Broadcasting GIF to group members:",
-        groupMembers.map((m) => m.userId.toString())
+        "🧑‍🤝‍🧑 Broadcasting GIF to group members (total: " +
+          groupMembers.length +
+          "):",
+        groupMembers.map((m) => m.userId.toString()),
       );
+
+      // 全メンバーに送信（送信者も含めてOK、クライアント側で重複回避できる）
       groupMembers.forEach((member) => {
-        if (member.userId.toString() !== sender) {
-          io.to(member.userId.toString()).emit("message_received", {
-            groupId: group,
-            message,
-          });
-        }
+        io.to(member.userId.toString()).emit("message_received", {
+          groupId: group,
+          message,
+        });
+      });
+
+      // 念のためグループルームにもemit（joinGroupしているメンバー全員に届く）
+      io.to(group.toString()).emit("message_received", {
+        groupId: group,
+        message,
       });
     }
 
@@ -224,7 +247,7 @@ router.post("/gif", async (req, res) => {
   }
 });
 
-// GET /api/messages/group/:groupId
+// GET /api/messages/group/:groupId（変更なし）
 router.get("/group/:groupId", async (req, res) => {
   try {
     const { groupId } = req.params;
@@ -233,14 +256,13 @@ router.get("/group/:groupId", async (req, res) => {
       "📥 Fetching messages for group:",
       groupId,
       "user:",
-      currentUserId
+      currentUserId,
     );
 
     if (!mongoose.Types.ObjectId.isValid(groupId)) {
       return res.status(400).json({ message: "無効なグループIDです" });
     }
 
-    // 💡 メンバーシップチェック
     const membership = await GroupMember.findOne({
       groupId: groupId,
       userId: currentUserId,
@@ -248,21 +270,18 @@ router.get("/group/:groupId", async (req, res) => {
 
     if (!membership) {
       console.log(
-        `❌ User ${currentUserId} is not a member of group ${groupId}. Access denied.`
+        `❌ User ${currentUserId} is not a member of group ${groupId}. Access denied.`,
       );
       return res
         .status(403)
         .json({ message: "グループへのアクセス権がありません。" });
     }
 
-    // 💡 BAN チェックを追加
     if (membership.isBanned) {
       console.log(`⛔ User ${currentUserId} is banned from group ${groupId}.`);
-      return res
-        .status(403)
-        .json({
-          message: "あなたはBANされているためメッセージを閲覧できません",
-        });
+      return res.status(403).json({
+        message: "あなたはBANされているためメッセージを閲覧できません",
+      });
     }
 
     const mutedMembers = await GroupMember.find({
@@ -297,6 +316,10 @@ router.post("/:id/read", async (req, res) => {
   try {
     console.log("👁️ Mark read request:", { messageId: req.params.id, userId });
 
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "無効なメッセージIDです" });
+    }
+
     const io = getIo();
     const message = await Message.findById(req.params.id);
     if (!message)
@@ -305,8 +328,15 @@ router.post("/:id/read", async (req, res) => {
     if (!message.readBy.includes(userId)) {
       message.readBy.push(userId);
       await message.save();
+      console.log(
+        "✅ Read status updated:",
+        message._id,
+        "readBy:",
+        message.readBy,
+      );
       io.to(message.group.toString()).emit("readStatusUpdated", message);
-      console.log("✅ Read status updated:", message._id);
+    } else {
+      console.log("ℹ️ Already read by user:", userId);
     }
 
     res.json({ success: true, message });
@@ -317,7 +347,7 @@ router.post("/:id/read", async (req, res) => {
 });
 
 /**
- * GET /api/messages/search
+ * GET /api/messages/search（変更なし）
  */
 router.get("/search", async (req, res) => {
   try {

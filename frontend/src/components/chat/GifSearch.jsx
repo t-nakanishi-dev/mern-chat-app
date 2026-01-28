@@ -1,18 +1,22 @@
 // frontend/src/components/GifSearch.jsx
-import React from "react";
+import React, { useState } from "react";
+import axios from "axios";
 import { searchGifs } from "../../api/giphy";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function GifSearch({
   gifQuery,
   setGifQuery,
   gifResults,
   setGifResults,
-  socket,
   user,
   groupId,
   showModal,
-  setMessages, // ← これをMessageInputから受け取る！！
+  setMessages,
 }) {
+  const [sending, setSending] = useState(false);
+
   const handleSearchGif = async () => {
     if (!gifQuery.trim()) return;
     try {
@@ -24,11 +28,30 @@ export default function GifSearch({
     }
   };
 
-  const handleSendGif = (url) => {
-    if (!socket || !user || !groupId) return;
+  const handleSendGif = async (url) => {
+    // 送信中なら何もしない（ダブルクリック防止）
+    if (sending) {
+      console.log("送信中です。連続クリックは無視されます");
+      return;
+    }
 
-    const gifMessage = {
-      _id: "temp-gif-" + Date.now(), // 一時ID
+    setSending(true);
+    console.log("handleSendGif が呼ばれました！ URL:", url);
+
+    if (!user || !groupId) {
+      console.log("早期return: userまたはgroupIdがありません", {
+        user,
+        groupId,
+      });
+      setSending(false);
+      return;
+    }
+
+    const tempId = "temp-gif-" + Date.now();
+    console.log("送信処理開始 - tempId:", tempId);
+
+    const tempMessage = {
+      _id: tempId,
       group: groupId,
       sender: user.uid,
       text: "",
@@ -37,23 +60,38 @@ export default function GifSearch({
       pending: true,
     };
 
-    // まず自分の画面に即座に表示（楽観的更新！）
-    setMessages((prev) => [...prev, gifMessage]);
+    try {
+      console.log("1. 楽観的更新開始");
+      setMessages((prev) => [...prev, tempMessage]);
 
-    // サーバーに送信（実際のAPIは後で作ればOK）
-    socket.emit("send_message", {
-      groupId,
-      message: {
+      console.log("2. axios.post を実行します...");
+      const res = await axios.post(`${API_URL}/messages/gif`, {
         group: groupId,
         sender: user.uid,
-        text: "",
         fileUrl: url,
-      },
-    });
+        gifQuery: gifQuery.trim() || "searched gif",
+      });
 
-    // 検索結果をクリア
-    setGifResults([]);
-    setGifQuery("");
+      console.log("3. axios.post 成功！ レスポンス:", res.data);
+
+      setMessages((prev) =>
+        prev.map((msg) => (msg._id === tempId ? res.data : msg)),
+      );
+
+      setGifResults([]);
+      setGifQuery("");
+    } catch (err) {
+      console.error("★ GIF送信でエラーが発生しました ★", err);
+      console.error("エラー詳細:", err.message);
+      if (err.response) {
+        console.error("サーバーからのレスポンス:", err.response.data);
+        console.error("ステータスコード:", err.response.status);
+      }
+      showModal("GIFの送信に失敗しました: " + (err.message || "不明なエラー"));
+      setMessages((prev) => prev.filter((msg) => msg._id !== tempId));
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -92,7 +130,9 @@ export default function GifSearch({
               key={index}
               src={url}
               alt="GIF"
-              className="w-full h-32 object-cover rounded-lg cursor-pointer hover:scale-105 transition transform shadow-md hover:shadow-xl border-2 border-transparent hover:border-purple-500"
+              className={`w-full h-32 object-cover rounded-lg cursor-pointer transition transform shadow-md hover:shadow-xl border-2 border-transparent hover:border-purple-500 ${
+                sending ? "opacity-50 cursor-wait" : "hover:scale-105"
+              }`}
               onClick={() => handleSendGif(url)}
             />
           ))}

@@ -184,7 +184,7 @@ export default function MessageInput({
           setGifQuery={setGifQuery}
           gifResults={gifResults}
           setGifResults={setGifResults}
-          socket={socket}
+          // socket={socket}
           user={user}
           groupId={groupId}
           showModal={showModal}
