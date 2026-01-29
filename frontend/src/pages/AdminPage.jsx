@@ -41,7 +41,7 @@ export default function AdminPage() {
 
       try {
         const res = await axios.get(
-          `${API_URL}/groupmembers/check-admin/${user.uid}`
+          `${API_URL}/groupmembers/check-admin/${user.uid}`,
         );
         if (!res.data.isAdmin) {
           alert("あなたは管理者ではありません");
@@ -52,7 +52,7 @@ export default function AdminPage() {
         setCurrentUser({ id: user.uid, name: user.displayName || "管理者" });
 
         const groupRes = await axios.get(
-          `${API_URL}/groups/admin-groups/${user.uid}`
+          `${API_URL}/groups/admin-groups/${user.uid}`,
         );
         setGroups(groupRes.data);
       } catch {
@@ -84,8 +84,8 @@ export default function AdminPage() {
         prev.map((m) =>
           m.userId._id === bannedUserId
             ? { ...m, isBanned: action === "ban" }
-            : m
-        )
+            : m,
+        ),
       );
     });
 
@@ -126,28 +126,28 @@ export default function AdminPage() {
       if (action === "ban" || action === "unban") {
         await axios.patch(
           `${API_URL}/groupmembers/${selectedGroup._id}/ban-member`,
-          { adminUserId: currentUser.id, targetUserId, action }
+          { adminUserId: currentUser.id, targetUserId, action },
         );
         setMembers((prev) =>
           prev.map((m) =>
             m.userId._id === targetUserId
               ? { ...m, isBanned: action === "ban" }
-              : m
-          )
+              : m,
+          ),
         );
       }
 
       if (action === "mute" || action === "unmute") {
         await axios.patch(
           `${API_URL}/groupmembers/${selectedGroup._id}/mute-member`,
-          { adminUserId: currentUser.id, targetUserId, action }
+          { adminUserId: currentUser.id, targetUserId, action },
         );
         setMembers((prev) =>
           prev.map((m) =>
             m.userId._id === targetUserId
               ? { ...m, isMuted: action === "mute" }
-              : m
-          )
+              : m,
+          ),
         );
       }
 
@@ -212,10 +212,18 @@ export default function AdminPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* 動的なグリッド設定:
+          - selectedGroupがある時: lgで3カラム (1:2の比率)
+          - selectedGroupがない時: 1カラムかつ最大幅を抑えて中央寄せ
+        */}
+        <div
+          className={`grid grid-cols-1 gap-8 transition-all duration-500 ${
+            selectedGroup ? "lg:grid-cols-3" : "max-w-2xl mx-auto"
+          }`}
+        >
           {/* グループ一覧 */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-3xl shadow-xl p-8">
+          <div className={`${selectedGroup ? "lg:col-span-1" : "w-full"}`}>
+            <div className="bg-white rounded-3xl shadow-xl p-8 h-full">
               <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
                 <Users className="w-8 h-8 text-blue-600" />
                 管理グループ一覧
@@ -265,7 +273,7 @@ export default function AdminPage() {
 
           {/* メンバー管理パネル */}
           {selectedGroup && (
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="bg-white rounded-3xl shadow-2xl p-8">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
                   <h2 className="text-3xl font-bold text-gray-800">
@@ -316,14 +324,12 @@ export default function AdminPage() {
                           </div>
                         </div>
 
-                        {/* ボタンエリア：スマホでは縦並び、PCでは横並び */}
                         <div className="flex flex-wrap gap-3 max-[500px]:flex-col w-full lg:w-auto">
-                          {/* BANボタン */}
                           <button
                             onClick={() =>
                               handleMemberAction(
                                 member.userId._id,
-                                member.isBanned ? "unban" : "ban"
+                                member.isBanned ? "unban" : "ban",
                               )
                             }
                             disabled={actionLoading}
@@ -337,12 +343,11 @@ export default function AdminPage() {
                             {member.isBanned ? "解除" : "BAN"}
                           </button>
 
-                          {/* ミュートボタン */}
                           <button
                             onClick={() =>
                               handleMemberAction(
                                 member.userId._id,
-                                member.isMuted ? "unmute" : "mute"
+                                member.isMuted ? "unmute" : "mute",
                               )
                             }
                             disabled={actionLoading}
@@ -360,7 +365,6 @@ export default function AdminPage() {
                             {member.isMuted ? "解除" : "ミュート"}
                           </button>
 
-                          {/* 削除ボタン：作成者も表示（グレーアウト） */}
                           <button
                             onClick={() =>
                               member.userId._id !== selectedGroup.createdBy &&

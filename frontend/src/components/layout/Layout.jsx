@@ -39,10 +39,11 @@ export default function Layout() {
       {/* サイドバー */}
       <aside
         className={`
-          bg-white border-r border-gray-300 shadow-md transition-all duration-300 ease-in-out
-          ${sidebarOpen ? "w-64 px-6 py-4" : "w-0"}
-          overflow-hidden flex-shrink-0
-        `}
+    bg-white border-r border-gray-300 shadow-md transition-all duration-300 ease-in-out
+    ${sidebarOpen ? "w-64 px-6 py-4" : "w-0"}
+    overflow-hidden flex-shrink-0
+    z-50                         
+  `}
       >
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-xl font-bold text-gray-800 whitespace-nowrap">
