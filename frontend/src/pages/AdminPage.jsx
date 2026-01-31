@@ -73,7 +73,7 @@ export default function AdminPage() {
   }, [navigate]);
 
   // ===============================
-  // private chat 用 表示名解決
+  // private chat 用 表示名解決（Promise.all）
   // ===============================
   useEffect(() => {
     if (!groups.length || !currentUser) return;
@@ -81,23 +81,35 @@ export default function AdminPage() {
     const fetchDisplayNames = async () => {
       const names = {};
 
-      for (const group of groups) {
-        if (group.type !== "private") {
-          names[group._id] = group.name || "グループチャット";
-          continue;
-        }
+      const privateTargets = groups.filter((g) => g.type === "private");
 
-        try {
-          const res = await axios.get(`${API_URL}/groups/${group._id}`);
-          const other = res.data.members?.find(
+      // 通常グループ即時
+      groups.forEach((g) => {
+        if (g.type !== "private") {
+          names[g._id] = g.name || "グループチャット";
+        }
+      });
+
+      const results = await Promise.all(
+        privateTargets.map((group) =>
+          axios
+            .get(`${API_URL}/groups/${group._id}`)
+            .then((res) => ({ ok: true, group, data: res.data }))
+            .catch((err) => ({ ok: false, group, err })),
+        ),
+      );
+
+      results.forEach((r) => {
+        if (r.ok) {
+          const other = r.data.members?.find(
             (m) => m.userId._id !== currentUser.id,
           );
-          names[group._id] = other?.userId?.name || "個人チャット";
-        } catch (err) {
-          console.error("表示名取得失敗:", err);
-          names[group._id] = "個人チャット";
+          names[r.group._id] =
+            other?.userId?.name || r.group.name || "個人チャット";
+        } else {
+          names[r.group._id] = "個人チャット";
         }
-      }
+      });
 
       setDisplayNames(names);
     };

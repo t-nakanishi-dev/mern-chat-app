@@ -84,13 +84,10 @@ export default function GroupsPage() {
   const fetchGroups = async () => {
     if (!currentUserId) return;
     try {
-      const res = await axios.get(
-        `${API_URL}/groupmembers/user/${currentUserId}`,
-      );
-      const userGroups = res.data
-        .filter((member) => member.groupId?._id) // _idがあるものだけ
-        .map((member) => member.groupId);
-      setGroups(userGroups);
+      // 苦労して修正したバックエンドの /api/groups を叩くように変更！
+      const res = await axios.get(`${API_URL}/groups?userId=${currentUserId}`);
+      // /api/groups は既に整形済みの配列を返すので map は不要です
+      setGroups(res.data);
     } catch (err) {
       console.error("チャット一覧取得失敗:", err);
     }
@@ -106,8 +103,12 @@ export default function GroupsPage() {
     return () => clearInterval(interval);
   }, [currentUserId]);
 
-  const handleGroupCreated = (group) => {
-    setGroups((prev) => [...prev, group]);
+  const handleGroupCreated = (newGroup) => {
+    // サーバーから displayName 付きのデータが返ってくるので、そのままセット
+    setGroups((prev) => [...prev, newGroup]);
+
+    // 念のため、1秒後くらいに全体を再同期させるとさらに確実です
+    setTimeout(() => fetchGroups(), 1000);
   };
 
   const handleDelete = (id) => {

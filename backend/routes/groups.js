@@ -72,7 +72,27 @@ router.post("/", async (req, res) => {
     }));
     await GroupMember.insertMany(memberDocs);
 
-    res.status(201).json({ group, members: memberDocs });
+    // 作成したグループに displayName を持たせて返却する
+    let displayName = group.name;
+
+    if (group.type === "private") {
+      // 自分（createdBy）以外のメンバーを探して名前を取得
+      const otherUserId = members.find((m) => m !== createdBy);
+      const otherUser = await User.findById(otherUserId).lean();
+      if (otherUser) {
+        displayName = otherUser.name;
+      }
+    }
+
+    // クライアントに返すデータを整形
+    const groupData = {
+      ...group._doc,
+      displayName, // 👈 これを足すことで即座に名前が表示される
+      unreadCount: 0,
+    };
+
+    console.log("✨ New group created with displayName:", displayName);
+    res.status(201).json(groupData);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "グループ作成に失敗しました" });
@@ -88,28 +108,60 @@ router.get("/", async (req, res) => {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ message: "userId が必要です" });
 
+    // 1. 自分が所属しているグループのID一覧を取得
     const memberships = await GroupMember.find({
       userId,
       isBanned: false,
     }).lean();
-    const groupIds = memberships.map((m) => m.groupId);
 
+    const groupIds = memberships.map((m) => m.groupId);
+    console.log(`🔎 ユーザー ${userId} の所属グループID一覧:`, groupIds);
+
+    // 2. グループ本体の情報を取得
     const groups = await Group.find({ _id: { $in: groupIds } }).lean();
 
-    const groupsWithUnread = await Promise.all(
+    // 3. 各グループごとに詳細情報を付与
+    const groupsWithDetails = await Promise.all(
       groups.map(async (group) => {
+        // 未読カウント
         const unreadCount = await Message.countDocuments({
           group: group._id,
           readBy: { $ne: userId },
           sender: { $ne: userId },
         });
-        return { ...group, unreadCount };
+
+        let displayName = group.name;
+
+        // 個人チャットの名前解決
+        if (group.type === "private") {
+          // そのグループの全メンバーを取得して、自分じゃない方を抽出
+          const allMembers = await GroupMember.find({ groupId: group._id })
+            .populate("userId", "name")
+            .lean();
+
+          const other = allMembers.find(
+            (m) => m.userId && String(m.userId._id) !== String(userId),
+          );
+
+          if (other && other.userId) {
+            displayName = other.userId.name;
+            console.log(`✅ Group ${group._id} の表示名を決定: ${displayName}`);
+          } else {
+            displayName = "個人チャット(相手不在)";
+          }
+        }
+
+        return {
+          ...group,
+          unreadCount,
+          displayName, // これをフロント側が見る
+        };
       }),
     );
 
-    res.json(groupsWithUnread);
+    res.json(groupsWithDetails);
   } catch (err) {
-    console.error(err);
+    console.error("❌ グループ一覧取得エラー:", err);
     res.status(500).json({ message: "グループ取得に失敗しました" });
   }
 });

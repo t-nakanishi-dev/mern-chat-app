@@ -2,62 +2,31 @@
 import axios from "axios";
 import { Link } from "react-router-dom";
 import {
-  Trash2,
   MessageCircle,
   Users,
   User,
   Hash,
   BellRing,
+  Trash2,
 } from "lucide-react";
-import { useState, useEffect } from "react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function GroupList({ groups, onDelete, currentUserId }) {
-  const [displayNames, setDisplayNames] = useState({});
+  // ===============================
+  // 表示名の決定
+  // バックエンドから渡される displayName を優先し、なければ group.name を使う
+  // ===============================
+  const getDisplayName = (group) =>
+    group.displayName || group.name || "名称未設定";
 
-  // グループごとに表示名を非同期で取得
-  useEffect(() => {
-    const fetchDisplayNames = async () => {
-      const newNames = { ...displayNames };
-
-      for (const group of groups) {
-        if (newNames[group._id]) continue; // 既に取得済みならスキップ
-
-        if (group.type !== "private") {
-          newNames[group._id] = group.name || "グループチャット";
-          continue;
-        }
-
-        try {
-          const { data } = await axios.get(`${API_URL}/groups/${group._id}`);
-          const other = data.members?.find(
-            (m) => m.userId._id !== currentUserId,
-          );
-          newNames[group._id] = other?.userId?.name || "個人チャット";
-        } catch (err) {
-          console.error("表示名取得エラー:", group._id, err);
-          newNames[group._id] = group.name || "個人チャット";
-        }
-      }
-
-      setDisplayNames(newNames);
-    };
-
-    if (groups?.length > 0) {
-      fetchDisplayNames();
-    }
-  }, [groups, currentUserId]);
-
-  const getDisplayName = (group) => {
-    return displayNames[group._id] || group.name || "読み込み中...";
-  };
-
+  // ===============================
+  // アバターの生成
+  // ===============================
   const getAvatar = (group) => {
-    // アバターも相手の名前で初期文字を表示したい場合
-    // 表示名が決まっているならそれを使う
     const displayName = getDisplayName(group);
-    if (group.type === "private" && displayName !== "読み込み中...") {
+
+    if (group.type === "private") {
       const initial = displayName?.charAt(0)?.toUpperCase() || "?";
       return (
         <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md ring-4 ring-white">
@@ -65,13 +34,17 @@ export default function GroupList({ groups, onDelete, currentUserId }) {
         </div>
       );
     }
+
     return (
       <div className="w-11 h-11 bg-gradient-to-br from-indigo-500 to-pink-500 rounded-full flex items-center justify-center text-white shadow-md ring-4 ring-white">
-        {group.type === "private" ? <User size={22} /> : <Users size={22} />}
+        <Users size={22} />
       </div>
     );
   };
 
+  // ===============================
+  // 削除処理
+  // ===============================
   const handleDelete = async (id, createdBy) => {
     if (createdBy !== currentUserId) {
       alert("作成者のみ削除可能です");
@@ -92,6 +65,7 @@ export default function GroupList({ groups, onDelete, currentUserId }) {
 
   return (
     <div className="h-full bg-white overflow-y-auto">
+      {/* ヘッダー */}
       <div className="p-6 sticky top-0 bg-white/90 backdrop-blur-sm z-10 border-b border-gray-200">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
           <MessageCircle className="w-8 h-8 text-purple-600" />
@@ -129,38 +103,25 @@ export default function GroupList({ groups, onDelete, currentUserId }) {
                       {getDisplayName(group)}
                     </span>
                   </div>
-                  {group.lastMessage && (
-                    <p className="text-sm text-gray-500 truncate mt-1">
-                      {group.lastMessage}
-                    </p>
+                  {/* 未読がある場合のバッジ表示（オプション） */}
+                  {group.unreadCount > 0 && (
+                    <span className="mt-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                      {group.unreadCount}
+                    </span>
                   )}
                 </div>
               </Link>
 
-              <div className="flex items-center gap-3 ml-3">
-                {group.unreadCount > 0 && (
-                  <span className="bg-gradient-to-r from-red-500 to-pink-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-pulse ring-4 ring-white">
-                    {group.unreadCount >= 100 ? "99+" : group.unreadCount}
-                  </span>
-                )}
-
-                {group.createdBy === currentUserId && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleDelete(group._id, group.createdBy);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-all duration-300 p-2.5 hover:bg-red-100 rounded-xl"
-                    title="削除"
-                  >
-                    <Trash2
-                      size={20}
-                      className="text-red-500 hover:text-red-700"
-                    />
-                  </button>
-                )}
-              </div>
+              {/* ⭐ 削除ボタンを追加（作成者本人の場合のみ表示） */}
+              {group.createdBy === currentUserId && (
+                <button
+                  onClick={() => handleDelete(group._id, group.createdBy)}
+                  className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                  title="チャットを削除"
+                >
+                  <Trash2 size={20} />
+                </button>
+              )}
             </li>
           ))
         )}
