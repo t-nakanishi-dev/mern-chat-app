@@ -7,7 +7,7 @@ import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import Modal from "../ui/Modal";
 import { v4 as uuidv4 } from "uuid";
-import { Ban, VolumeX, MessageCircle, Users } from "lucide-react";
+import { Ban, VolumeX, MessageCircle, Users, UserX } from "lucide-react";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -35,6 +35,7 @@ export default function GroupChat({ groupId }) {
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const [isRemoved, setIsRemoved] = useState(false);
 
   const showModal = (msg) => {
     setModalMessage(msg);
@@ -64,14 +65,11 @@ export default function GroupChat({ groupId }) {
           `${API_URL}/groups/${groupId}`,
         );
 
-        // ★ここを修正：privateチャットの場合は相手の名前を表示
         let displayName = groupData.name || "個人チャット";
         if (groupData.type === "private" && memberData.length >= 2) {
           const otherMember = memberData.find((m) => m.userId._id !== user.uid);
           if (otherMember?.userId?.name) {
             displayName = otherMember.userId.name;
-            // 好みで「あなたと〇〇」にしたい場合は以下に変更
-            // displayName = `あなたと ${otherMember.userId.name}`;
           }
         }
         setGroupName(displayName);
@@ -108,6 +106,32 @@ export default function GroupChat({ groupId }) {
                 : "ミュートが解除されました。",
             );
           }
+        });
+
+        socket.on(
+          "removed_from_group",
+          ({ userId, groupId: removedGroupId }) => {
+            if (userId === user.uid && removedGroupId === groupId) {
+              setIsRemoved(true);
+              showModal("あなたはグループから退出させられました。");
+            }
+          },
+        );
+
+        // ★ 新規追加：システムメッセージ（メンバー退出など）
+        socket.on("system_message", (sysMsg) => {
+          if (sysMsg.groupId && sysMsg.groupId !== groupId) return;
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              _id: uuidv4(),
+              sender: "system",
+              text: sysMsg.content,
+              createdAt: sysMsg.createdAt,
+              isSystem: true, // MessageListで中央表示などに活用
+            },
+          ]);
         });
 
         socket.on("message_received", ({ groupId: gId, message }) => {
@@ -155,10 +179,11 @@ export default function GroupChat({ groupId }) {
       socket.off("readStatusUpdated");
       socket.off("member_banned");
       socket.off("member_muted");
+      socket.off("system_message"); // 追加
     };
   }, [user, groupId, socket]);
 
-  // メッセージ取得
+  // メッセージ取得（変更なし）
   const fetchMessages = useCallback(async () => {
     if (!user) return;
     try {
@@ -184,7 +209,7 @@ export default function GroupChat({ groupId }) {
     }
   }, [groupId, user]);
 
-  // 過去メッセージ読み込み
+  // 過去メッセージ読み込み（変更なし）
   const loadMoreMessages = useCallback(async () => {
     if (!user || !hasMore || loadingMore) return;
     try {
@@ -213,7 +238,7 @@ export default function GroupChat({ groupId }) {
     }
   }, [user, groupId, page, hasMore, loadingMore]);
 
-  // メッセージ送信
+  // メッセージ送信（変更なし）
   const handleSendMessage = async (text, fileData) => {
     if (!user || (!text?.trim() && !fileData)) return;
 
@@ -224,7 +249,7 @@ export default function GroupChat({ groupId }) {
       text: text?.trim() || "",
       fileUrl: fileData ? URL.createObjectURL(fileData) : null,
       createdAt: new Date().toISOString(),
-      readBy: [user.uid], // 送信時点で自分を既読に
+      readBy: [user.uid],
     };
 
     setMessages((prev) => [...prev, tempMessage]);
@@ -260,33 +285,29 @@ export default function GroupChat({ groupId }) {
     }
   };
 
-  // スマート自動スクロール（これが最後のピース！）
+  // スマート自動スクロール（変更なし）
   useEffect(() => {
     if (!messagesEndRef.current || !scrollContainerRef.current) return;
 
     const scrollContainer = scrollContainerRef.current;
     const lastMessage = messages[messages.length - 1];
 
-    // 自分が送信したメッセージ → 必ず最下部へ
     if (lastMessage?.sender === user?.uid) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
       return;
     }
 
-    // ユーザーが下にいるかどうか（100px以内なら「下にいる」と判定）
     const isNearBottom =
       scrollContainer.scrollHeight -
         scrollContainer.scrollTop -
         scrollContainer.clientHeight <
       100;
 
-    // 下にいる場合のみ自動スクロール
     if (isNearBottom) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, user?.uid]);
 
-  // 以下、表示部分（変更なし）
   if (!user)
     return (
       <div className="flex items-center justify-center h-screen text-gray-500">
@@ -313,6 +334,23 @@ export default function GroupChat({ groupId }) {
           <h2 className="text-3xl font-bold text-red-700">{groupName}</h2>
           <p className="text-xl text-red-600 mt-6">
             あなたはこのグループからBANされています
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isRemoved) {
+    return (
+      <div className="flex flex-col h-screen bg-gradient-to-br from-orange-50 to-amber-50">
+        <div className="bg-white/90 backdrop-blur-sm border-b border-orange-200 p-8 text-center">
+          <UserX className="w-20 h-20 text-orange-600 mx-auto mb-4" />
+          <h2 className="text-3xl font-bold text-orange-700">{groupName}</h2>
+          <p className="text-xl text-orange-600 mt-6">
+            あなたはこのグループから退出させられました
+          </p>
+          <p className="mt-4 text-gray-600">
+            グループに参加するには再度招待が必要です
           </p>
         </div>
       </div>
@@ -357,7 +395,7 @@ export default function GroupChat({ groupId }) {
             loadingMore={loadingMore}
             messagesEndRef={messagesEndRef}
             scrollContainerRef={scrollContainerRef}
-            socket={socket} // ← ここを追加！！
+            socket={socket}
           />
         </div>
 

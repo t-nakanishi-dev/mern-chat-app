@@ -4,6 +4,7 @@ const router = express.Router();
 const GroupMember = require("../models/GroupMember");
 const Group = require("../models/Group");
 const mongoose = require("mongoose");
+const { userSockets } = require("../socket"); // ★ 追加
 
 // ルーターを関数でラップし、ioインスタンスを引数として受け取る
 module.exports = (io) => {
@@ -23,7 +24,11 @@ module.exports = (io) => {
       console.error(err);
       res.status(500).json({ message: "管理者権限の確認に失敗しました" });
     }
-  }); // ----------------------------- // GET /api/groupmembers/:groupId // 指定グループのメンバー一覧取得 // -----------------------------
+  });
+
+  // -----------------------------
+  // GET /api/groupmembers/:groupId // 指定グループのメンバー一覧取得
+  // -----------------------------
 
   router.get("/:groupId", async (req, res) => {
     try {
@@ -34,19 +39,24 @@ module.exports = (io) => {
 
       const members = await GroupMember.find({ groupId }).populate(
         "userId",
-        "name email"
+        "name email",
       );
       console.log(
         "🔄 Fetched members for group:",
         groupId,
-        members.map((m) => m.userId._id)
+        members.map((m) => m.userId._id),
       );
       res.json(members);
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "メンバー取得に失敗しました" });
     }
-  }); // ----------------------------- // GET /api/groupmembers/user/:userId // 特定ユーザーが所属するグループのメンバーシップ一覧を取得 // -----------------------------
+  });
+
+  // -----------------------------
+  // // GET /api/groupmembers/user/:userId
+  // // 特定ユーザーが所属するグループのメンバーシップ一覧を取得
+  // // -----------------------------
 
   router.get("/user/:userId", async (req, res) => {
     try {
@@ -55,14 +65,19 @@ module.exports = (io) => {
       console.log(
         "🔄 Fetched groups for user:",
         userId,
-        userGroups.map((g) => g.groupId._id)
+        userGroups.map((g) => g.groupId._id),
       );
       res.json(userGroups);
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "ユーザーのグループ取得に失敗しました" });
     }
-  }); // ----------------------------- // POST /api/groupmembers // メンバー追加 // -----------------------------
+  });
+
+  // -----------------------------
+  // // POST /api/groupmembers
+  // // メンバー追加
+  // // -----------------------------
 
   router.post("/", async (req, res) => {
     try {
@@ -88,7 +103,12 @@ module.exports = (io) => {
       console.error(err);
       res.status(500).json({ message: "メンバー追加に失敗しました" });
     }
-  }); // ----------------------------- // PATCH /api/groupmembers/:id // メンバー更新 (isAdmin, isBanned, isMuted) // -----------------------------
+  });
+
+  // -----------------------------
+  // // PATCH /api/groupmembers/:id
+  // // メンバー更新 (isAdmin, isBanned, isMuted)
+  // // -----------------------------
 
   router.patch("/:id", async (req, res) => {
     try {
@@ -107,7 +127,7 @@ module.exports = (io) => {
       const member = await GroupMember.findByIdAndUpdate(
         req.params.id,
         { $set: updateFields },
-        { new: true, runValidators: true }
+        { new: true, runValidators: true },
       );
 
       if (!member)
@@ -119,7 +139,12 @@ module.exports = (io) => {
       console.error(err);
       res.status(500).json({ message: "メンバー更新に失敗しました" });
     }
-  }); // ----------------------------- // PATCH /api/groupmembers/:groupId/ban-member // メンバーBAN / BAN解除（即時通知対応） // -----------------------------
+  });
+
+  // -----------------------------
+  // // PATCH /api/groupmembers/:groupId/ban-member
+  // // メンバーBAN / BAN解除（即時通知対応）
+  // // -----------------------------
 
   router.patch("/:groupId/ban-member", async (req, res) => {
     const { groupId } = req.params;
@@ -162,7 +187,11 @@ module.exports = (io) => {
       }
 
       await member.save();
-      console.log("✅ Member BAN status updated:", member); // ----------------------------- // 🔔 即時通知 // -----------------------------
+      console.log("✅ Member BAN status updated:", member);
+
+      // -----------------------------
+      // // 🔔 即時通知
+      // // -----------------------------
 
       if (io) {
         io.to(groupId).emit("member_banned", {
@@ -184,7 +213,12 @@ module.exports = (io) => {
       console.error(err);
       res.status(500).json({ message: "サーバーエラー" });
     }
-  }); // ----------------------------- // PATCH /api/groupmembers/:groupId/mute-member // 💡 追加: メンバーミュート / ミュート解除 // -----------------------------
+  });
+
+  // -----------------------------
+  // // PATCH /api/groupmembers/:groupId/mute-member
+  // // 💡 追加: メンバーミュート / ミュート解除
+  // // -----------------------------
 
   router.patch("/:groupId/mute-member", async (req, res) => {
     const { groupId } = req.params;
@@ -227,8 +261,12 @@ module.exports = (io) => {
       console.error("ミュートアクション失敗:", err);
       res.status(500).json({ message: "サーバーエラーが発生しました。" });
     }
-  }); // ----------------------------- // DELETE /api/groupmembers/:id // メンバー削除（削除通知を追加） // -----------------------------
+  });
 
+  // -----------------------------
+  // DELETE /api/groupmembers/:id
+  // メンバー削除（全員にシステムメッセージを送信）
+  // -----------------------------
   router.delete("/:id", async (req, res) => {
     try {
       const member = await GroupMember.findById(req.params.id);
@@ -236,26 +274,37 @@ module.exports = (io) => {
         return res.status(404).json({ message: "メンバーが見つかりません" });
       }
 
-      await GroupMember.findByIdAndDelete(req.params.id);
-      console.log("🗑️ Member deleted:", member._id); // 💡 修正: userSockets マップからソケットIDを取得して通知
+      const groupIdStr = member.groupId.toString();
+      const userIdStr = member.userId.toString();
 
-      if (io) {
-        console.log("⚠️ Emitting removed_from_group:", {
-          userId: member.userId.toString(),
-          groupId: member.groupId.toString(),
+      // ① 削除される本人に通知（削除前）
+      const targetSocketId = userSockets.get(userIdStr);
+      if (targetSocketId) {
+        io.to(targetSocketId).emit("removed_from_group", {
+          userId: userIdStr,
+          groupId: groupIdStr,
         });
-        const targetSocketId = io.userSockets.get(member.userId.toString());
-        if (targetSocketId) {
-          io.to(targetSocketId).emit(
-            "removed_from_group",
-            member.groupId.toString()
-          );
-        }
+        console.log("🔔 removed_from_group emitted:", userIdStr);
+      } else {
+        console.log("⚠️ No socket found for deleted user:", userIdStr);
       }
+
+      // ② グループ全体に system_message
+      io.to(groupIdStr).emit("system_message", {
+        type: "member_removed",
+        content: "メンバーさんがグループから退出しました",
+        createdAt: new Date().toISOString(),
+        sender: "system",
+        groupId: groupIdStr,
+      });
+
+      // ③ 最後に DB 削除
+      await GroupMember.findByIdAndDelete(req.params.id);
+      console.log("🗑️ Member deleted:", member._id);
 
       res.json({ message: "メンバーを削除しました" });
     } catch (err) {
-      console.error(err);
+      console.error("DELETE member error:", err);
       res.status(500).json({ message: "メンバー削除に失敗しました" });
     }
   });

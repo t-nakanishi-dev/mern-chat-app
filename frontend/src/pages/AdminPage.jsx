@@ -137,8 +137,17 @@ export default function AdminPage() {
       if (selectedGroup._id !== groupId) return;
       setMembers((prev) =>
         prev.map((m) =>
-          m.userId._id === userId ? { ...m, isBanned: action === "ban" } : m,
+          m.userId._id === userId
+            ? { ...m, isBanned: action === "ban" } // これでOK（unban時はfalseになる）
+            : m,
         ),
+      );
+    });
+
+    socket.on("member_muted", ({ userId, groupId, isMuted }) => {
+      if (selectedGroup._id !== groupId) return;
+      setMembers((prev) =>
+        prev.map((m) => (m.userId._id === userId ? { ...m, isMuted } : m)),
       );
     });
 
@@ -149,6 +158,7 @@ export default function AdminPage() {
 
     return () => {
       socket.off("member_banned");
+      socket.off("member_muted");
       socket.off("removed_from_group");
     };
   }, [socket, selectedGroup]);
@@ -173,36 +183,61 @@ export default function AdminPage() {
   // ===============================
   // メンバー操作
   // ===============================
-  const handleMemberAction = async (targetUserId, action) => {
+  const handleMemberAction = async (member, action = null) => {
+    // memberを第1引数に
+    // actionが指定されていない場合（削除専用）は "remove" とみなす
+    const actualAction = action || "remove";
+    const targetUserId = member.userId._id;
+
     if (
-      action === "remove" &&
+      actualAction === "remove" &&
       !confirm("本当にこのユーザーをグループから削除しますか？")
     )
       return;
 
     setActionLoading(true);
     try {
-      if (action === "ban" || action === "unban") {
+      if (actualAction === "ban" || actualAction === "unban") {
         await axios.patch(
           `${API_URL}/groupmembers/${selectedGroup._id}/ban-member`,
-          { adminUserId: currentUser.id, targetUserId, action },
+          { adminUserId: currentUser.id, targetUserId, action: actualAction },
+        );
+
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.userId._id === targetUserId
+              ? { ...m, isBanned: actualAction === "ban" }
+              : m,
+          ),
         );
       }
 
-      if (action === "mute" || action === "unmute") {
+      if (actualAction === "mute" || actualAction === "unmute") {
         await axios.patch(
           `${API_URL}/groupmembers/${selectedGroup._id}/mute-member`,
-          { adminUserId: currentUser.id, targetUserId, action },
+          { adminUserId: currentUser.id, targetUserId, action: actualAction },
+        );
+
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.userId._id === targetUserId
+              ? { ...m, isMuted: actualAction === "mute" }
+              : m,
+          ),
         );
       }
 
-      if (action === "remove") {
-        await axios.delete(`${API_URL}/groupmembers/${targetUserId}`);
-        setMembers((prev) => prev.filter((m) => m.userId._id !== targetUserId));
+      if (actualAction === "remove") {
+        // ★ ここで member._id を使用（正しいGroupMemberのID）
+        await axios.delete(`${API_URL}/groupmembers/${member._id}`);
+        setMembers((prev) => prev.filter((m) => m._id !== member._id));
+        alert("メンバーを削除しました");
       }
     } catch (err) {
-      alert("操作に失敗しました");
-      console.error(err);
+      console.error("操作エラー:", err);
+      alert(
+        "操作に失敗しました: " + (err.response?.data?.message || err.message),
+      );
     } finally {
       setActionLoading(false);
     }
@@ -325,39 +360,62 @@ export default function AdminPage() {
                     >
                       <strong>{member.userId.name}</strong>
                       <div className="flex gap-2">
+                        {/* ミュートボタン */}
                         <button
                           disabled={actionLoading}
                           onClick={() =>
                             handleMemberAction(
-                              member.userId._id,
+                              member,
                               member.isMuted ? "unmute" : "mute",
                             )
                           }
-                          className={`px-3 py-2 rounded text-white ${
-                            actionLoading ? "bg-gray-400" : "bg-gray-600"
-                          }`}
+                          className={`group relative px-3 py-2 rounded text-white ${
+                            actionLoading
+                              ? "bg-gray-400"
+                              : "bg-gray-600 hover:bg-gray-700"
+                          } transition-colors`}
                         >
-                          {member.isMuted ? <Volume2 /> : <VolumeX />}
+                          {member.isMuted ? (
+                            <Volume2 size={20} />
+                          ) : (
+                            <VolumeX size={20} />
+                          )}
+                          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                            {member.isMuted ? "ミュート解除" : "ミュート"}
+                          </span>
                         </button>
 
+                        {/* Banボタン */}
                         <button
+                          disabled={actionLoading}
                           onClick={() =>
                             handleMemberAction(
-                              member.userId._id,
+                              member,
                               member.isBanned ? "unban" : "ban",
                             )
                           }
-                          className="px-3 py-2 bg-red-600 text-white rounded"
+                          className={`group relative px-3 py-2 text-white rounded transition-colors ${
+                            member.isBanned
+                              ? "bg-red-800 hover:bg-red-900"
+                              : "bg-red-600 hover:bg-red-700"
+                          }`}
                         >
-                          <Ban />
+                          <Ban size={20} />
+                          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                            {member.isBanned ? "Ban解除" : "Ban"}
+                          </span>
                         </button>
+
+                        {/* 削除ボタン */}
                         <button
-                          onClick={() =>
-                            handleMemberAction(member.userId._id, "remove")
-                          }
-                          className="px-3 py-2 bg-orange-600 text-white rounded"
+                          disabled={actionLoading}
+                          onClick={() => handleMemberAction(member)} // ← member全体を渡す
+                          className="group relative px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors"
                         >
-                          <UserX />
+                          <UserX size={20} />
+                          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                            グループから削除
+                          </span>
                         </button>
                       </div>
                     </div>
