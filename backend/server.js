@@ -12,13 +12,30 @@ const GroupMember = require("./models/GroupMember");
 const Message = require("./models/Message");
 
 const app = express();
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.FRONTEND_URL ||
+    "https://mern-chat-app-frontend-zg6x.onrender.com",
+];
+
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true })); 
+
 app.use(
   cors({
-    origin: "http://localhost:5173", // フロントのURL（必要なら）
-    credentials: true, // Cookieを送るために超重要！！
-  })
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
 );
-app.use(express.json());
 
 // MongoDB接続
 mongoose
