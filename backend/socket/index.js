@@ -39,7 +39,7 @@ const socketHandler = (socket) => {
           console.log(
             "📤 message emitted to:",
             member.userId.toString(),
-            targetSocketId
+            targetSocketId,
           );
         }
       });
@@ -51,7 +51,7 @@ const socketHandler = (socket) => {
   socket.on("readStatusUpdated", (updatedMessage) => {
     io.to(updatedMessage.group.toString()).emit(
       "readStatusUpdated",
-      updatedMessage
+      updatedMessage,
     );
   });
 
@@ -70,10 +70,11 @@ module.exports = {
     io = new Server(httpServer, {
       cors: {
         origin: [
-          "http://localhost:5173",
-          "https://mern-chat-app-frontend-zk7s.onrender.com",
+          "http://localhost:5173", 
+          "https://mern-chat-app-frontend-zg6x.onrender.com", 
         ],
         methods: ["GET", "POST"],
+        credentials: true, 
       },
     });
 
