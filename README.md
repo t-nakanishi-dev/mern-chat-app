@@ -5,21 +5,22 @@ https://chat-app.onrender.com
 ※スマートフォン・PCの両方に対応しています。
 
 ## 🔑 テストログイン
-Email: test@gmail.com  
-Password: test
+Email: t.nakanishi.dev@gmail.com
+Password: t.nakanishi.dev
 
 ## 📸 スクリーンショット
-**ログイン画面**  
-（ログインページのスクリーンショット）
 
-**グループ一覧画面**  
-（グループリストのスクリーンショット）
+### 🔐 ログイン画面
+![ログイン画面](./screenshots/login.png)
 
-**チャット画面**  
-（メッセージ送受信画面のスクリーンショット）
+### 👥 グループ一覧画面
+![グループ一覧](./screenshots/group-list.png)
 
-**管理者ページ**  
-（グループ管理ページのスクリーンショット）
+### 💬 チャット画面
+![チャット画面](./screenshots/chat.png)
+
+### 🛠 管理者ページ
+![管理者ページ](./screenshots/admin.png)
 
 ## 📝 アプリ概要
 このアプリは、Firebase認証とSocket.ioによるリアルタイム通信を実現した  
@@ -51,5 +52,5 @@ Password: test
 - Tailwindでシンプルかつ使いやすいUIを構築  
 
 ## 👤 作者情報
-- 名前：PiyoCode324  
-- GitHub：[https://github.com/PiyoCode324](https://github.com/PiyoCode324)
+- 名前：t-nakanishi-dev
+- GitHub：https://github.com/t-nakanishi-dev
