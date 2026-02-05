@@ -18,7 +18,6 @@ export default function GroupsPage() {
   // Firebase認証リスナー
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log("🔑 Firebase user:", user);
       if (user) setCurrentUserId(user.uid);
       else setCurrentUserId(null);
     });
@@ -30,19 +29,17 @@ export default function GroupsPage() {
     if (!currentUserId) return;
 
     const s = io(API_URL, {
-      query: { userId: currentUserId }, // ← これを追加！！
-      transports: ["websocket", "polling"], // 明示的に両方許可（デフォルトでもOKだが念のため）
+      query: { userId: currentUserId },
+      transports: ["websocket", "polling"], // 明示的に両方許可
     });
 
     setSocket(s);
-    console.log("🔌 Socket.IO connecting... with userId:", currentUserId);
 
     s.emit("joinGroup", { userId: currentUserId });
 
     s.on(
       "message_received",
       ({ groupId, message, selfOnly }) => {
-        console.log("📩 message_received:", { groupId, message, selfOnly });
         if (!selfOnly && message.senderId !== currentUserId) {
           setGroups((prevGroups) =>
             prevGroups.map((group) =>
@@ -57,7 +54,6 @@ export default function GroupsPage() {
     );
 
     s.on("readStatusUpdated", (updatedMessage) => {
-      console.log("✅ readStatusUpdated:", updatedMessage);
       setGroups((prevGroups) =>
         prevGroups.map((group) => {
           if (group._id === updatedMessage.group) {
@@ -70,12 +66,10 @@ export default function GroupsPage() {
     });
 
     s.on("removed_from_group", (groupId) => {
-      console.log("⚠️ removed_from_group received:", groupId);
       setGroups((prevGroups) => prevGroups.filter((g) => g._id !== groupId));
     });
 
     return () => {
-      console.log("🔌 Socket.IO disconnecting...");
       s.disconnect();
     };
   }, [currentUserId]);
@@ -84,9 +78,7 @@ export default function GroupsPage() {
   const fetchGroups = async () => {
     if (!currentUserId) return;
     try {
-      // 苦労して修正したバックエンドの /api/groups を叩くように変更！
       const res = await axios.get(`${API_URL}/groups?userId=${currentUserId}`);
-      // /api/groups は既に整形済みの配列を返すので map は不要です
       setGroups(res.data);
     } catch (err) {
       console.error("チャット一覧取得失敗:", err);
@@ -107,12 +99,11 @@ export default function GroupsPage() {
     // サーバーから displayName 付きのデータが返ってくるので、そのままセット
     setGroups((prev) => [...prev, newGroup]);
 
-    // 念のため、1秒後くらいに全体を再同期させるとさらに確実です
+    // 念のため、1秒後くらいに全体を再同期させる
     setTimeout(() => fetchGroups(), 1000);
   };
 
   const handleDelete = (id) => {
-    console.log("🗑 handleDelete called:", id);
     setGroups((prev) => prev.filter((g) => g._id !== id));
   };
 

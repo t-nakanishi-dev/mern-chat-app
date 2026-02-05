@@ -7,6 +7,6 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    setupFiles: ["./vitest.setup.js"], // この行を追加
+    setupFiles: ["./vitest.setup.js"], 
   },
 });

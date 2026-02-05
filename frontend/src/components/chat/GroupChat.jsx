@@ -135,7 +135,6 @@ export default function GroupChat({ groupId }) {
         });
 
         socket.on("message_received", ({ groupId: gId, message }) => {
-          console.log("相手からmessage_received受信！", { gId, message });
           if (gId !== groupId) return;
           const senderId =
             typeof message.sender === "string"
@@ -179,11 +178,11 @@ export default function GroupChat({ groupId }) {
       socket.off("readStatusUpdated");
       socket.off("member_banned");
       socket.off("member_muted");
-      socket.off("system_message"); // 追加
+      socket.off("system_message"); 
     };
   }, [user, groupId, socket]);
 
-  // メッセージ取得（変更なし）
+  // メッセージ取得
   const fetchMessages = useCallback(async () => {
     if (!user) return;
     try {
@@ -209,7 +208,7 @@ export default function GroupChat({ groupId }) {
     }
   }, [groupId, user]);
 
-  // 過去メッセージ読み込み（変更なし）
+  // 過去メッセージ読み込み
   const loadMoreMessages = useCallback(async () => {
     if (!user || !hasMore || loadingMore) return;
     try {
@@ -238,7 +237,7 @@ export default function GroupChat({ groupId }) {
     }
   }, [user, groupId, page, hasMore, loadingMore]);
 
-  // メッセージ送信（変更なし）
+  // メッセージ送信
   const handleSendMessage = async (text, fileData) => {
     if (!user || (!text?.trim() && !fileData)) return;
 
@@ -285,7 +284,7 @@ export default function GroupChat({ groupId }) {
     }
   };
 
-  // スマート自動スクロール（変更なし）
+  // スマート自動スクロール
   useEffect(() => {
     if (!messagesEndRef.current || !scrollContainerRef.current) return;
 

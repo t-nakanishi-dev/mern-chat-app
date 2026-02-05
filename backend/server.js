@@ -48,15 +48,12 @@ const server = http.createServer(app);
 // Socket.IO初期化
 socket.init(server);
 
-console.log("Socket.IO server initialized");
-
 // ==================== ルーティング ====================
 
-// ここが大事！ require("./routes/xxx") の形で .js を書かない！！
 const groupRoutes = require("./routes/groups");
 const messageRoutes = require("./routes/message");
 const userRoutes = require("./routes/user");
-const authRoutes = require("./routes/auth"); // .js なしでOK！
+const authRoutes = require("./routes/auth"); 
 
 // groupmembers は io を渡す特殊なルーター
 const createGroupmemberRouter = require("./routes/groupmembers");
@@ -66,7 +63,7 @@ app.use("/api/groups", groupRoutes);
 app.use("/api/groupmembers", groupmemberRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/auth", authRoutes); // これで完全に動く！！
+app.use("/api/auth", authRoutes); 
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {

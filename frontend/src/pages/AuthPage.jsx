@@ -30,7 +30,6 @@ export default function AuthPage() {
         // ログイン
         // =====================
         await signInWithEmailAndPassword(auth, email, password);
-        // Mongo ユーザー保証は App.jsx の onAuthStateChanged に任せる
       } else {
         // =====================
         // サインアップ

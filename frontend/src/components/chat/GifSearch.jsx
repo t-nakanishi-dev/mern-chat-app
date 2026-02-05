@@ -31,24 +31,17 @@ export default function GifSearch({
   const handleSendGif = async (url) => {
     // 送信中なら何もしない（ダブルクリック防止）
     if (sending) {
-      console.log("送信中です。連続クリックは無視されます");
       return;
     }
 
     setSending(true);
-    console.log("handleSendGif が呼ばれました！ URL:", url);
 
     if (!user || !groupId) {
-      console.log("早期return: userまたはgroupIdがありません", {
-        user,
-        groupId,
-      });
       setSending(false);
       return;
     }
 
     const tempId = "temp-gif-" + Date.now();
-    console.log("送信処理開始 - tempId:", tempId);
 
     const tempMessage = {
       _id: tempId,

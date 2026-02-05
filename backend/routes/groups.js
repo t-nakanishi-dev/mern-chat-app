@@ -68,7 +68,7 @@ router.post("/", async (req, res) => {
     const memberDocs = allMembers.map((uid) => ({
       groupId: group._id,
       userId: uid,
-      isAdmin: uid === createdBy, // 作成者を管理者に設定
+      isAdmin: uid === createdBy, 
     }));
     await GroupMember.insertMany(memberDocs);
 
@@ -87,7 +87,7 @@ router.post("/", async (req, res) => {
     // クライアントに返すデータを整形
     const groupData = {
       ...group._doc,
-      displayName, // 👈 これを足すことで即座に名前が表示される
+      displayName, 
       unreadCount: 0,
     };
 
@@ -115,7 +115,6 @@ router.get("/", async (req, res) => {
     }).lean();
 
     const groupIds = memberships.map((m) => m.groupId);
-    console.log(`🔎 ユーザー ${userId} の所属グループID一覧:`, groupIds);
 
     // 2. グループ本体の情報を取得
     const groups = await Group.find({ _id: { $in: groupIds } }).lean();
@@ -145,7 +144,6 @@ router.get("/", async (req, res) => {
 
           if (other && other.userId) {
             displayName = other.userId.name;
-            console.log(`✅ Group ${group._id} の表示名を決定: ${displayName}`);
           } else {
             displayName = "個人チャット(相手不在)";
           }
@@ -281,7 +279,7 @@ router.patch("/:id/members", async (req, res) => {
 
 // -----------------------------
 // GET /api/groups/:id
-// グループ詳細取得（チャット画面で必要！！）
+// グループ詳細取得
 // -----------------------------
 router.get("/:id", async (req, res) => {
   try {
@@ -293,7 +291,7 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ message: "グループが見つかりません" });
     }
 
-    // メンバー一覧も一緒に返す（チャットヘッダーに人数表示したいので）
+    // メンバー一覧も一緒に返す
     const memberDocs = await GroupMember.find({ groupId }).populate(
       "userId",
       "name",
@@ -312,8 +310,8 @@ router.get("/:id", async (req, res) => {
 
     res.json({
       ...group,
-      members, // ← これでチャット画面の「○人のメンバー」が表示される
-      memberCount: members.length, // ← なくてもいいけど便利
+      members, 
+      memberCount: members.length, 
     });
   } catch (err) {
     console.error("グループ詳細取得エラー:", err);

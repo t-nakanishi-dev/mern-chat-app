@@ -89,7 +89,7 @@ export default function Layout() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* ヘッダー */}
         <header className="bg-white px-4 h-14 border-b border-gray-300 shadow-sm flex items-center">
-          {/* 常に表示されるハンバーガーボタン（閉じてても開けるように！） */}
+          {/* 常に表示されるハンバーガーボタン */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 rounded hover:bg-gray-200 mr-3 sm:hidden"

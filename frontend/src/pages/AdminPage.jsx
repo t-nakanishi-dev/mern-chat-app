@@ -138,7 +138,7 @@ export default function AdminPage() {
       setMembers((prev) =>
         prev.map((m) =>
           m.userId._id === userId
-            ? { ...m, isBanned: action === "ban" } // これでOK（unban時はfalseになる）
+            ? { ...m, isBanned: action === "ban" } 
             : m,
         ),
       );
@@ -228,7 +228,6 @@ export default function AdminPage() {
       }
 
       if (actualAction === "remove") {
-        // ★ ここで member._id を使用（正しいGroupMemberのID）
         await axios.delete(`${API_URL}/groupmembers/${member._id}`);
         setMembers((prev) => prev.filter((m) => m._id !== member._id));
         alert("メンバーを削除しました");

@@ -1,7 +1,7 @@
 // frontend/src/api/giphy.js
 import axios from "axios";
 
-const API_KEY = import.meta.env.VITE_GIPHY_API_KEY; // .env に保存したキー
+const API_KEY = import.meta.env.VITE_GIPHY_API_KEY; 
 const BASE_URL = "https://api.giphy.com/v1/gifs/search";
 
 export const searchGifs = async (query) => {
@@ -10,7 +10,7 @@ export const searchGifs = async (query) => {
       params: {
         api_key: API_KEY,
         q: query,
-        limit: 12, // 一度に取得する件数
+        limit: 12, 
         rating: "pg",
       },
     });

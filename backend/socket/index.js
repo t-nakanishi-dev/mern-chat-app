@@ -6,19 +6,16 @@ let io;
 const userSockets = new Map(); // userId -> socket.id
 
 const socketHandler = (socket) => {
-  console.log("🔌 New client connected:", socket.id);
 
   socket.on("joinGroup", ({ groupId, userId }) => {
     socket.userId = userId;
     // ユーザーIDをキーとしてソケットIDを保存
     userSockets.set(userId.toString(), socket.id);
     socket.join(groupId); // グループIDでのルーム参加も引き続き必要
-    console.log(`👤 User ${userId} joined group ${groupId}`);
   });
 
   socket.on("groupMessage", async (msg) => {
     const { group, senderId } = msg;
-    console.log("✉️ groupMessage received:", msg);
     try {
       const members = await GroupMember.find({ groupId: group }).lean();
       members.forEach((member) => {
@@ -36,11 +33,6 @@ const socketHandler = (socket) => {
             message: msg,
             selfOnly: member.userId.toString() === senderId && member.isMuted,
           });
-          console.log(
-            "📤 message emitted to:",
-            member.userId.toString(),
-            targetSocketId,
-          );
         }
       });
     } catch (err) {
@@ -56,7 +48,6 @@ const socketHandler = (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ Client disconnected:", socket.id);
     if (socket.userId) {
       // ユーザーIDをキーとしてマップから削除
       userSockets.delete(socket.userId.toString());
@@ -79,7 +70,6 @@ module.exports = {
     });
 
     io.on("connection", socketHandler);
-    console.log("🔹 Socket.IO server initialized");
     return io;
   },
 
@@ -92,7 +82,6 @@ module.exports = {
   userSockets: userSockets,
 
   emitRemovedFromGroup: (userId, groupId) => {
-    console.log("⚠️ emitRemovedFromGroup called:", { userId, groupId });
     const socketId = userSockets.get(userId.toString());
     if (socketId) {
       io.to(socketId).emit("removed_from_group", groupId.toString());

@@ -4,7 +4,7 @@ import { useAuth } from "../../hooks/useAuth";
 import axios from "axios";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "../../firebase";
-import { Camera, Loader2 } from "lucide-react"; // lucide でカメラアイコン！
+import { Camera, Loader2 } from "lucide-react"; 
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -14,7 +14,7 @@ export default function Profile() {
   const [bio, setBio] = useState("");
   const [iconFile, setIconFile] = useState(null);
   const [iconUrl, setIconUrl] = useState("");
-  const [loading, setLoading] = useState(false); // 保存中ローダー用
+  const [loading, setLoading] = useState(false); 
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -48,7 +48,7 @@ export default function Profile() {
       let uploadedUrl = iconUrl;
       if (iconFile) {
         uploadedUrl = await handleUpload();
-        setIconFile(null); // クリア
+        setIconFile(null); 
       }
 
       await axios.patch(`${API_URL}/users/${user.uid}`, {
@@ -71,7 +71,7 @@ export default function Profile() {
     if (file) {
       setIconFile(file);
       const preview = URL.createObjectURL(file);
-      setIconUrl(preview); // 即反映！
+      setIconUrl(preview); 
     }
   };
 

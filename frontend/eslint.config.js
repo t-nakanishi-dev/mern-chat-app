@@ -21,7 +21,7 @@ export default defineConfig([
         ...globals.global,
         ...globals.require,
         ...globals.vitest,
-        ...globals.jest, // ここを追加
+        ...globals.jest, 
       },
       parserOptions: {
         ecmaVersion: "latest",

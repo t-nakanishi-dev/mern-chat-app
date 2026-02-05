@@ -6,7 +6,6 @@ import { ja } from "date-fns/locale";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// 今日・昨日・日付を日本語で表示
 const formatDateLabel = (dateString) => {
   if (!dateString) return "";
   const date = parseISO(dateString);
@@ -20,11 +19,11 @@ export default function MessageList({
   currentUserId,
   messagesEndRef,
   scrollContainerRef,
-  socket, // ← 新規追加：socket を受け取る
+  socket, 
 }) {
   const [userProfiles, setUserProfiles] = useState({});
 
-  // ユーザー情報取得（変更なし）
+  // ユーザー情報取得
   useEffect(() => {
     const uniqueUserIds = [...new Set(messages.map((m) => m.sender))];
     uniqueUserIds.forEach(async (uid) => {

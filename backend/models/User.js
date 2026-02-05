@@ -2,7 +2,7 @@
 const mongoose = require("mongoose");
 
 const UserSchema = new mongoose.Schema({
-  _id: String, // Firebase UID をそのまま _id に
+  _id: String, 
   name: { type: String, required: true },
   email: { type: String, required: true },
   iconUrl: { type: String },

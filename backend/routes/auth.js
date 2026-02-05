@@ -1,11 +1,10 @@
-// backend/routes/auth.js   ← ファイル名はそのまま！
+// backend/routes/auth.js  
 const express = require("express");
 const { getAuth } = require("firebase-admin/auth");
 const jwt = require("jsonwebtoken");
 
 const router = express.Router();
 
-// ポートフォリオ用シークレット（本番では .env に入れてね）
 const JWT_SECRET =
   "my-portfolio-2025-super-secure-jwt-secret-please-change-later";
 
@@ -23,7 +22,7 @@ router.post("/issue-jwt", async (req, res) => {
 
     res.cookie("jwt", token, {
       httpOnly: true,
-      secure: false, // localhost は false
+      secure: false, 
       sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000,
     });
@@ -35,4 +34,4 @@ router.post("/issue-jwt", async (req, res) => {
   }
 });
 
-module.exports = router; // ← これが超重要！！
+module.exports = router; 

@@ -4,7 +4,7 @@ const router = express.Router();
 const GroupMember = require("../models/GroupMember");
 const Group = require("../models/Group");
 const mongoose = require("mongoose");
-const { userSockets } = require("../socket"); // ★ 追加
+const { userSockets } = require("../socket"); 
 
 // ルーターを関数でラップし、ioインスタンスを引数として受け取る
 module.exports = (io) => {
@@ -40,11 +40,6 @@ module.exports = (io) => {
       const members = await GroupMember.find({ groupId }).populate(
         "userId",
         "name email",
-      );
-      console.log(
-        "🔄 Fetched members for group:",
-        groupId,
-        members.map((m) => m.userId._id),
       );
       res.json(members);
     } catch (err) {
@@ -187,7 +182,6 @@ module.exports = (io) => {
       }
 
       await member.save();
-      console.log("✅ Member BAN status updated:", member);
 
       // -----------------------------
       // // 🔔 即時通知
@@ -195,11 +189,6 @@ module.exports = (io) => {
 
       if (io) {
         io.to(groupId).emit("member_banned", {
-          userId: targetUserId,
-          action,
-        });
-        console.log("🔔 member_banned event emitted:", {
-          groupId,
           userId: targetUserId,
           action,
         });
@@ -247,11 +236,6 @@ module.exports = (io) => {
 
       if (io) {
         io.to(groupId).emit("member_muted", { userId: targetUserId, action });
-        console.log(`🔔 member_muted event emitted:`, {
-          groupId,
-          userId: targetUserId,
-          action,
-        });
       }
 
       res
@@ -300,7 +284,6 @@ module.exports = (io) => {
 
       // ③ 最後に DB 削除
       await GroupMember.findByIdAndDelete(req.params.id);
-      console.log("🗑️ Member deleted:", member._id);
 
       res.json({ message: "メンバーを削除しました" });
     } catch (err) {

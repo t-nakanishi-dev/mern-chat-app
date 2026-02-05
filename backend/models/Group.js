@@ -8,8 +8,6 @@ const GroupSchema = new mongoose.Schema({
   type: { type: String, enum: ["group", "private"], default: "group" },
 });
 
-// ⭐追加（「自分が作ったグループ一覧」取得が速くなる）
 GroupSchema.index({ createdBy: 1 });
-// ⭐追加終わり
 
 module.exports = mongoose.model("Group", GroupSchema);

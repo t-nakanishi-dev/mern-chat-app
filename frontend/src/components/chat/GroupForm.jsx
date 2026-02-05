@@ -162,7 +162,6 @@ export default function GroupForm({ onGroupCreated, currentUserId }) {
         </div>
       )}
 
-      {/* 神ボタン（プロフィールと完全統一！） */}
       <button
         type="submit"
         disabled={loading}

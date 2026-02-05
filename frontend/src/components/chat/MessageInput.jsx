@@ -132,7 +132,7 @@ export default function MessageInput({
 
       {/* 入力エリア：アイコン＋入力＋送信 */}
       <div className="flex items-center gap-3">
-        {/* ファイル添付アイコン（隠しinputをトリガー） */}
+        {/* ファイル添付アイコン */}
         <label className="cursor-pointer">
           <Paperclip
             size={24}
