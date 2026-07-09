@@ -5,8 +5,8 @@ https://chat-app.onrender.com
 ※スマートフォン・PCの両方に対応しています。
 
 ## 🔑 テストログイン
-Email: t.nakanishi.dev@gmail.com
-Password: t.nakanishi.dev
+Email:test123@gmail.com　
+Password:test123
 
 ## 📸 スクリーンショット
 
